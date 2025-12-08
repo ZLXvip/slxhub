@@ -368,7 +368,7 @@ local function getClosestPlayer()
     local shortestDistance = Settings.FOV
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     
-    for _, player in pairs(Players:GetPlayers()) do
+    for _, player in pairs(Players:GetPlayers())
         if player ~= LocalPlayer and isAlive(player) and not isTeammate(player) then
             local character = player.Character
             local targetPart = character:FindFirstChild(Settings.TargetPart) or character:FindFirstChild("HumanoidRootPart")
