@@ -1,4 +1,4 @@
-local Players = game:GetService("Players")
+9local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -90,7 +90,7 @@ AimbotToggle.Name = "AimbotToggle"
 AimbotToggle.Size = UDim2.new(1, -20, 0, 30)
 AimbotToggle.Position = UDim2.new(0, 10, 0, 35)
 AimbotToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-AimbotToggle.Text = "Ativar Aimbot: OFF"
+AimbotToggle.Text = "Aimbot: 🗣OFF"
 AimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 AimbotToggle.Font = Enum.Font.Gotham
 AimbotToggle.TextScaled = true
