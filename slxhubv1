@@ -263,10 +263,10 @@ end)
 AimbotToggle.MouseButton1Click:Connect(function()
     Settings.Enabled = not Settings.Enabled
     if Settings.Enabled then
-        AimbotToggle.Text = "Ativar Aimbot: ON"
+        AimbotToggle.Text = "Aimbot: ON"
         AimbotToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
     else
-        AimbotToggle.Text = "Ativar Aimbot: OFF"
+        AimbotToggle.Text = "Aimbot: 🗣OFF"
         AimbotToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     end
 end)
