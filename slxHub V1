@@ -1341,7 +1341,7 @@ FlyBindable.OnInvoke = function(value)
         LocalPlayer.Character.Humanoid.JumpPower = 50
         LocalPlayer.Character.HumanoidRootPart.Anchored = false
     end
-end)
+end
 
 RunService.RenderStepped:Connect(function()
     if flytoggle and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -1375,8 +1375,7 @@ end)
 
 ems1:Line("Local Player")
 
--- MODIFICADO: El slider ahora va hasta 500 para el speed hack
-ems1:Slider("WalkSpeed", 16, 500, 16, function(value)
+ems1:Slider("WalkSpeed", 16, 100, 16, function(value)
 	LocalPlayer.Character.Humanoid.WalkSpeed = value
 end)
 
@@ -1445,14 +1444,4 @@ RunService.Stepped:Connect(function()
             LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position) * CFrame.Angles(0, lookAt:ToOrientation(), 0)
         end
     end
-end)
-
-ems2:Line("External Hub") -- NUEVA FUNCIÓN AÑADIDA
-
--- Botón para cargar el hub con el loadstring proporcionado
-ems2:Button("Load SLX Hub", function()
-    -- Ejecuta el loadstring del hub
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/ZLXvip/slxHub/refs/heads/main/slxHub V1"))()
-    end)
 end)
