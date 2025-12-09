@@ -1,8 +1,22 @@
 --[[ 
-    KLAUS HUB V132.0 (SLXHUB - NOCLIP/ESP RECOVERY)
-    BASE: Funcional V130.0 (INSERT Keybind).
-    FIX: Recuperación de las funcionalidades de Noclip y ESP que se perdieron durante la reestructuración de la GUI (V131).
+    S l x HUB V133.0 (SLXHUB - GAME LOCK)
+    BASE: Funcional V132.0.
+    FIX: Añadido bloqueo para que el script SOLO se ejecute en el Place ID: 17209126270.
 ]]--
+
+-- =======================================
+-- 🔒 BLOQUEO POR JUEGO ESPECÍFICO (Rancheria)
+-- =======================================
+local TARGET_PLACE_ID = 17209126270 -- Rancheria, Nuevo León
+local CurrentPlaceID = game.PlaceId
+
+if CurrentPlaceID ~= TARGET_PLACE_ID then
+    -- Si no estamos en el juego correcto, avisamos y salimos.
+    warn(">>> KLAUS HUB ERROR: Este script está diseñado SOLO para Place ID: " .. TARGET_PLACE_ID .. " (Actual: " .. CurrentPlaceID .. "). Deteniendo ejecución.")
+    return 
+end
+-- =======================================
+
 
 -- ---------------------------------------
 -- CONFIGURACIÓN INICIAL Y LIBRERÍA (SLXHUB)
@@ -93,7 +107,7 @@ LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter() 
 
 -- ---------------------------------------
--- FUNCIONES CENTRALES (ASEGURADAS PARA V132) 
+-- FUNCIONES CENTRALES (V126/V132 Base) 
 -- ---------------------------------------
 
 local function isWallHiding(targetPos)
@@ -154,7 +168,7 @@ local function getClosestPlayerForTP()
     return closestPlayer
 end
 
-local function toggleGhostMode(active) -- <<< FUNCIÓN DE NOCLIP RECUPERADA
+local function toggleGhostMode(active)
     Settings.Fantasma.Enabled = active
     local safeCharacter = LocalPlayer.Character 
     local safeHRP = safeCharacter and safeCharacter:FindFirstChild("HumanoidRootPart")
@@ -179,7 +193,7 @@ local function toggleGhostMode(active) -- <<< FUNCIÓN DE NOCLIP RECUPERADA
     end
 end
 
-local function toggleHitbox(Value) -- <<< FUNCIÓN DE HITBOX RECUPERADA
+local function toggleHitbox(Value)
     Settings.Hitbox.Enabled = Value
     if not Value then
         for _, player in pairs(Players:GetPlayers()) do
@@ -282,7 +296,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- 3. SIMPLE NAME ESP (LOOP RECUPERADO)
+    -- 3. SIMPLE NAME ESP 
     pcall(function()
         if not Settings.ESP.Enabled then 
              for _, espName in pairs(ESPObjects) do 
@@ -342,4 +356,4 @@ RunService.Stepped:Connect(function()
 end)
 
 
-print(">>> KLAUS HUB V132 (SLXHUB - Noclip/ESP Recovered) CARGADO. ¡Todo debe funcionar ahora! <<<")
+print(">>> KLAUS HUB V133 (SLXHUB - GAME LOCKED) CARGADO. ¡Solo funciona en Rancheria! <<<")
