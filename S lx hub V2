@@ -1,7 +1,7 @@
 --[[ 
-    S l x HUB V130.0 (SLXHUB - TOGGLE KEYBIND INSERT)
-    BASE: Funcional V129.0.
-    FIX: Cambiada la tecla de esconder/mostrar el Hub a INSERT.
+    KLAUS HUB V132.0 (SLXHUB - NOCLIP/ESP RECOVERY)
+    BASE: Funcional V130.0 (INSERT Keybind).
+    FIX: Recuperación de las funcionalidades de Noclip y ESP que se perdieron durante la reestructuración de la GUI (V131).
 ]]--
 
 -- ---------------------------------------
@@ -11,13 +11,12 @@ local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ZLXvi
 local window = library:Win()
 
 -- =======================================
--- LÓGICA DE OCULTAR/MOSTRAR (EL FIX)
+-- LÓGICA DE OCULTAR/MOSTRAR (INSERT Key)
 -- =======================================
 local UserInputService = game:GetService("UserInputService")
 local isHidden = false 
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    -- *** CAMBIO DE TECLA: Usamos la tecla INSERT ***
     if input.KeyCode == Enum.KeyCode.Insert and not gameProcessed then
         isHidden = not isHidden
         
@@ -31,9 +30,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 -- =======================================
 
--- Tabs según la estructura del usuario
+-- Tabs según la nueva estructura
 local CombatTab = window:addtap("Combat")
 local MoventTab = window:addtap("Movent") 
+local RenderTab = window:addtap("Render") 
 
 -- Ayarlar (Settings)
 local Settings = {
@@ -93,7 +93,7 @@ LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter() 
 
 -- ---------------------------------------
--- FUNCIONES CENTRALES (Idénticas a V126) 
+-- FUNCIONES CENTRALES (ASEGURADAS PARA V132) 
 -- ---------------------------------------
 
 local function isWallHiding(targetPos)
@@ -154,7 +154,7 @@ local function getClosestPlayerForTP()
     return closestPlayer
 end
 
-local function toggleGhostMode(active)
+local function toggleGhostMode(active) -- <<< FUNCIÓN DE NOCLIP RECUPERADA
     Settings.Fantasma.Enabled = active
     local safeCharacter = LocalPlayer.Character 
     local safeHRP = safeCharacter and safeCharacter:FindFirstChild("HumanoidRootPart")
@@ -179,7 +179,7 @@ local function toggleGhostMode(active)
     end
 end
 
-local function toggleHitbox(Value)
+local function toggleHitbox(Value) -- <<< FUNCIÓN DE HITBOX RECUPERADA
     Settings.Hitbox.Enabled = Value
     if not Value then
         for _, player in pairs(Players:GetPlayers()) do
@@ -191,12 +191,14 @@ local function toggleHitbox(Value)
 end
 
 -- ---------------------------------------
--- CONSTRUCCIÓN DE LA GUI (SLXHUB)
+-- CONSTRUCCIÓN DE LA GUI (SLXHUB - REESTRUCTURA V131)
 -- ---------------------------------------
+
+-- COMBAT TAB
 local AimbotPage = CombatTab:addpage()
 local TPKillPage = CombatTab:addpage()
 local HitboxPage = CombatTab:addpage()
-local ConfigPage = CombatTab:addpage() -- Página para el botón informativo
+local ConfigPage = CombatTab:addpage() 
 
 AimbotPage:Ti("🔫 Aimbot Controls")
 AimbotPage:Toggle("Aimbot Aktif", Settings.Aimbot.Enabled, function(value) Settings.Aimbot.Enabled = value; if FOVCircle then FOVCircle.Visible = value end end)
@@ -214,21 +216,24 @@ HitboxPage:Toggle("Hitbox Aktif", Settings.Hitbox.Enabled, function(value) toggl
 HitboxPage:Slder("Hitbox Boyutu", 1, 10000, Settings.Hitbox.Size, function(value) Settings.Hitbox.Size = value end)
 
 ConfigPage:Ti("⚙️ Utilidad")
-ConfigPage:Button("Alternar Hub (Tecla INSERT)", function() end) -- Botón informativo
+ConfigPage:Button("Alternar Hub (Tecla INSERT)", function() end) 
 
-local VisualsPage = MoventTab:addpage() 
-local UtilityPage = MoventTab:addpage() 
-local StealthPage = MoventTab:addpage() 
-MoventTab:addpage() 
+-- RENDER TAB (SOLO ESP)
+local VisualsPage = RenderTab:addpage() 
+RenderTab:addpage()
 
 VisualsPage:Ti("👁️ Name ESP Simple")
 VisualsPage:Toggle("Name ESP Aktif", Settings.ESP.Enabled, function(value) Settings.ESP.Enabled = value end)
 VisualsPage:Toggle("RGB ESP Aktif", Settings.ESP.RGB, function(value) Settings.ESP.RGB = value end) 
 
+
+-- MOVENT TAB (SOLO NOCLIP)
+local UtilityPage = MoventTab:addpage() 
+MoventTab:addpage()
+MoventTab:addpage()
+
 UtilityPage:Ti("🏃 Movement/Noclip")
 UtilityPage:Toggle("Fantasma (NoClip Crudo)", Settings.Fantasma.Enabled, function(value) toggleGhostMode(value) end)
-
-StealthPage:Ti("❌ Funciones Eliminadas/Movidas")
 
 
 -- ---------------------------------------
@@ -277,7 +282,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- 3. SIMPLE NAME ESP 
+    -- 3. SIMPLE NAME ESP (LOOP RECUPERADO)
     pcall(function()
         if not Settings.ESP.Enabled then 
              for _, espName in pairs(ESPObjects) do 
@@ -337,4 +342,4 @@ RunService.Stepped:Connect(function()
 end)
 
 
-print(">>> KLAUS HUB V130 (SLXHUB - INSERT KEY) CARGADO. ¡Presiona INSERT para esconder/mostrar el Hub! <<<")
+print(">>> KLAUS HUB V132 (SLXHUB - Noclip/ESP Recovered) CARGADO. ¡Todo debe funcionar ahora! <<<")
