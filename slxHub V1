@@ -1,87 +1,88 @@
-do
-local ui = game:GetService("CoreGui") : FindFirstChild("NBTxTP Lib")
-if ui then
-ui : Destroy()
+do 
+    local ui =  game:GetService("CoreGui"):FindFirstChild("NBTxTP Lib") 
+    if ui then
+        ui:Destroy()
+    end
 end
-end
+
 
 
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game : GetService("TweenService")
-local RunService = game : GetService("RunService")
-local LocalPlayer = game : GetService("Players").LocalPlayer
-local Mouse = LocalPlayer : GetMouse()
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
 local Atomlib = Instance.new("ScreenGui")
 
 Atomlib.Name = "NBTxTP Lib"
-Atomlib.Parent = game : GetService("CoreGui")
+Atomlib.Parent = game:GetService("CoreGui")
 Atomlib.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 
 
 local function MakeDraggable(topbarobject, object)
-local Dragging = nil
-local DragInput = nil
-local DragStart = nil
-local StartPosition = nil
+	local Dragging = nil
+	local DragInput = nil
+	local DragStart = nil
+	local StartPosition = nil
 
-local function Update(input)
-local Delta = input.Position - DragStart
-local pos =
-UDim2.new(
-    StartPosition.X.Scale,
-    StartPosition.X.Offset + Delta.X,
-    StartPosition.Y.Scale,
-    StartPosition.Y.Offset + Delta.Y
-    )
-    local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Position = pos })
-    Tween : Play()
-    end
+	local function Update(input)
+		local Delta = input.Position - DragStart
+		local pos =
+			UDim2.new(
+			StartPosition.X.Scale,
+			StartPosition.X.Offset + Delta.X,
+			StartPosition.Y.Scale,
+			StartPosition.Y.Offset + Delta.Y
+		)
+		local Tween = TweenService:Create(object, TweenInfo.new(0.2), {Position = pos})
+		Tween:Play()
+	end
 
-    topbarobject.InputBegan : Connect(
-        function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            Dragging = true
-            DragStart = input.Position
-            StartPosition = object.Position
+	topbarobject.InputBegan:Connect(
+		function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				Dragging = true
+				DragStart = input.Position
+				StartPosition = object.Position
 
-            input.Changed : Connect(
-                function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    Dragging = false
-                end
-                end
-            )
-        end
-        end
-    )
+				input.Changed:Connect(
+					function()
+						if input.UserInputState == Enum.UserInputState.End then
+							Dragging = false
+						end
+					end
+				)
+			end
+		end
+	)
 
-    topbarobject.InputChanged : Connect(
-        function(input)
-        if
-            input.UserInputType == Enum.UserInputType.MouseMovement or
-                input.UserInputType == Enum.UserInputType.Touch
-        then
-            DragInput = input
-        end
-        end
-    )
+	topbarobject.InputChanged:Connect(
+		function(input)
+			if
+				input.UserInputType == Enum.UserInputType.MouseMovement or
+					input.UserInputType == Enum.UserInputType.Touch
+			then
+				DragInput = input
+			end
+		end
+	)
 
-    UserInputService.InputChanged : Connect(
-        function(input)
-        if input == DragInput and Dragging then
-            Update(input)
-        end
-        end
-    )
+	UserInputService.InputChanged:Connect(
+		function(input)
+			if input == DragInput and Dragging then
+				Update(input)
+			end
+		end
+	)
 end
 
 
 local create = {}
-local AZUL_OSCURO = Color3.fromRGB(27, 42, 53) -- Color de acento modificado a Azul Zafiro Oscuro
 
-function create : Win()
+
+function create:Win()
 
     local fs = false 
     local currentservertoggled = ""
@@ -104,7 +105,7 @@ function create : Win()
     Logo.AnchorPoint = Vector2.new(0.5, 0.5)
     Logo.Position = UDim2.new(0.1, 0, 0.08, 0)
     Logo.BackgroundColor3 = Color3.fromRGB(19, 19, 19)
-    Logo.BorderColor3 = AZUL_OSCURO 
+    Logo.BorderColor3 = Color3.fromRGB(27, 42, 53)
     Logo.BorderSizePixel = 0
     Logo.Size = UDim2.new(0, 56, 0, 56)
     Logo.Image = "http://www.roblox.com/asset"
@@ -120,7 +121,7 @@ function create : Win()
     PageTap.Position = UDim2.new(0.189873412, 0, 0, 0)
     PageTap.Size = UDim2.new(0, 320, 0, 56)
 
-    UIGradient_PageTap.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, AZUL_OSCURO), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 65, 80))} 
+    UIGradient_PageTap.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(230, 0, 39)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 35, 138))}
     UIGradient_PageTap.Parent = PageTap
 
     
@@ -196,13 +197,13 @@ function tap:addtap(text)
 
     TextLabel_Tap.Parent = TextButton_Tap
     TextLabel_Tap.Name = "TextLabel_Tap"
-    TextLabel_Tap.BackgroundColor3 = AZUL_OSCURO 
+    TextLabel_Tap.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     TextLabel_Tap.AnchorPoint = Vector2.new(0.5, 0.5)
     TextLabel_Tap.Position = UDim2.new(0.52, 0, 0.8, 0)
     TextLabel_Tap.Size = UDim2.new(0, 0, 0, 0)
     TextLabel_Tap.Font = Enum.Font.SourceSans
     TextLabel_Tap.Text = " "
-    TextLabel_Tap.TextColor3 = AZUL_OSCURO 
+    TextLabel_Tap.TextColor3 = Color3.fromRGB(255, 0, 95)
     TextLabel_Tap.TextSize = 14.000
     TextLabel_Tap.BorderSizePixel = 0
 
@@ -246,8 +247,8 @@ function tap:addtap(text)
     ScolPage.BorderSizePixel = 0
     ScolPage.Size = UDim2.new(0, 395, 0, 324)
     ScolPage.ScrollBarThickness = 3
-    ScolPage.ScrollBarImageColor3 = AZUL_OSCURO 
-    
+    ScolPage.ScrollBarImageColor3 =  Color3.fromRGB(255, 0, 125)
+
     MainPage.Name = "MainPage"
     MainPage.Parent = ScolPage
     MainPage.BackgroundTransparency = 1 
@@ -273,13 +274,23 @@ function tap:addtap(text)
         currentservertoggled = MainPage.Name
         for i, v in next, pagesFolder:GetChildren() do
             if v.Name == "MainFramePage" then
-                -- Tweens omitidos para brevedad, pero la lógica de ocultar/mostrar se mantiene
+                -- TweenService:Create(
+                --     fucklib,
+                --     TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                --     {BackgroundTransparency = 0}
+                -- ):Play()
                 v.Visible = false
 
             end
 
             MainFramePage.Visible = true
        --     wait(0.125)
+            -- TweenService:Create(
+            --     fucklib,
+            --     TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            --     {BackgroundTransparency = 1}
+            -- ):Play()
+        --    MainPage:TweenSizeAndPosition(UDim2.new(0, 0, 0, 0), UDim2.new(0.5, 0, 0.5, 0), "In", "Quad", 0.15, true)
         end
         
     for i ,v in next , ScolTap:GetChildren() do
@@ -339,7 +350,7 @@ function page:addpage()
     
     Page.Name = "Page"
     Page.Parent = MainPage
-    Page.BackgroundColor3 = AZUL_OSCURO 
+    Page.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     Page.BorderSizePixel = 0
     Page.Position = UDim2.new(0.51645571, 0, 0.0526315793, 0)
     Page.Size = UDim2.new(0, 178, 0, 262)
@@ -418,13 +429,13 @@ function ems:Button(text,callback)
 
     TextLabel_emsTextButton.Parent = emsTextButton
     TextLabel_emsTextButton.Name = "TextLabel_emsTextButton"
-    TextLabel_emsTextButton.BackgroundColor3 = AZUL_OSCURO 
+    TextLabel_emsTextButton.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     TextLabel_emsTextButton.AnchorPoint = Vector2.new(0.5, 0.5)
     TextLabel_emsTextButton.Position = UDim2.new(0.5, 0, 0.5, 0)
     TextLabel_emsTextButton.Size = UDim2.new(0, 0, 0, 0)
     TextLabel_emsTextButton.Font = Enum.Font.GothamSemibold
     TextLabel_emsTextButton.Text = text
-    TextLabel_emsTextButton.TextColor3 = AZUL_OSCURO 
+    TextLabel_emsTextButton.TextColor3 = Color3.fromRGB(255, 0, 95)
     TextLabel_emsTextButton.TextSize = 10.000
     TextLabel_emsTextButton.BorderSizePixel = 0
 
@@ -432,20 +443,20 @@ function ems:Button(text,callback)
                     
     MheeFrameStroke.Thickness = 1
     MheeFrameStroke.LineJoinMode = Enum.LineJoinMode.Round
-    MheeFrameStroke.Color = AZUL_OSCURO 
+    MheeFrameStroke.Color = Color3.fromRGB(255, 0, 95)
     MheeFrameStroke.Transparency = 0
 
     emsTextButton.MouseButton1Click:Connect(function()
         TweenService:Create(
             TextLabel_emsTextButton,
             TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {TextSize =5} 
+            {TextSize =5} -- UDim2.new(0, 128, 0, 25)
         ):Play()
         wait(0.1)
         TweenService:Create(
             TextLabel_emsTextButton,
             TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {TextSize = 10} 
+            {TextSize = 10} -- UDim2.new(0, 128, 0, 25)
         ):Play()
         pcall(callback)
     end)
@@ -457,7 +468,7 @@ function ems:Button(text,callback)
             TweenService:Create(
                 emsTextButton,
                 TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {BackgroundColor3 =  AZUL_OSCURO} 
+                {BackgroundColor3 =  Color3.fromRGB(255, 0, 95)} -- UDim2.new(0, 128, 0, 25)
             ):Play()
 --     end
         -- joincheck = not joincheck
@@ -468,7 +479,7 @@ function ems:Button(text,callback)
             TweenService:Create(
                 emsTextButton,
                 TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {BackgroundColor3 =  AZUL_OSCURO} 
+                {BackgroundColor3 =  Color3.fromRGB(255, 0, 95)} -- UDim2.new(0, 128, 0, 25)
             ):Play()
     end)
 end
@@ -479,7 +490,7 @@ function ems:Button1(text,callback)
     
     ToggleFrame1.Name = "ToggleFrame"
     ToggleFrame1.Parent = ScolPage2
-    ToggleFrame1.BackgroundColor3 = AZUL_OSCURO 
+    ToggleFrame1.BackgroundColor3 = Color3.fromRGB(255, 0 ,95)
     ToggleFrame1.BorderSizePixel = 0
     ToggleFrame1.BackgroundTransparency = 0
     ToggleFrame1.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -525,20 +536,20 @@ function ems:Button1(text,callback)
                     
     MheeFrameStroke1.Thickness = 1
     MheeFrameStroke1.LineJoinMode = Enum.LineJoinMode.Round
-    MheeFrameStroke1.Color = AZUL_OSCURO 
+    MheeFrameStroke1.Color = Color3.fromRGB(255, 0 ,95)
     MheeFrameStroke1.Transparency = 0
 
     emsTextButton1.MouseButton1Click:Connect(function()
         TweenService:Create(
             TextLabel_emsTextButton1,
             TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {TextSize =5} 
+            {TextSize =5} -- UDim2.new(0, 128, 0, 25)
         ):Play()
         wait(0.1)
         TweenService:Create(
             TextLabel_emsTextButton1,
             TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {TextSize = 10} 
+            {TextSize = 10} -- UDim2.new(0, 128, 0, 25)
         ):Play()
         pcall(callback)
     end)
@@ -550,7 +561,7 @@ function ems:Button1(text,callback)
             TweenService:Create(
                 emsTextButton1,
                 TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {BackgroundColor3 =  AZUL_OSCURO} 
+                {BackgroundColor3 =  Color3.fromRGB(255, 255, 255)} -- UDim2.new(0, 128, 0, 25)
             ):Play()
 --     end
         -- joincheck = not joincheck
@@ -561,7 +572,7 @@ function ems:Button1(text,callback)
             TweenService:Create(
                 emsTextButton1,
                 TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {BackgroundColor3 =  AZUL_OSCURO} 
+                {BackgroundColor3 =  Color3.fromRGB(255, 255, 255)} -- UDim2.new(0, 128, 0, 25)
             ):Play()
     end)
 end
@@ -600,7 +611,7 @@ function  ems:Toggle(text,de,callback)
     local ToggleButton2 = Instance.new("TextButton")
 
     ToggleButton2.Parent = ToggleFrame
-    ToggleButton2.BackgroundColor3 = AZUL_OSCURO 
+    ToggleButton2.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     ToggleButton2.BackgroundTransparency = 1
     ToggleButton2.AnchorPoint = Vector2.new(0.5, 0.5)
     ToggleButton2.Position = UDim2.new(1, 0, 0.45, 0)
@@ -617,7 +628,7 @@ function  ems:Toggle(text,de,callback)
 
     TextLabelToggle.Parent = ToggleButton
     TextLabelToggle.Name = "TextLabelToggle"
-    TextLabelToggle.BackgroundColor3 = AZUL_OSCURO 
+    TextLabelToggle.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     TextLabelToggle.AnchorPoint = Vector2.new(0.5, 0.5)
     TextLabelToggle.Position = UDim2.new(0.64, 0, 0.4, 0)
     TextLabelToggle.Size =  UDim2.new(0, 150, 0, 40)
@@ -635,8 +646,8 @@ function  ems:Toggle(text,de,callback)
     local TextButton_2_Toggle = Instance.new("TextButton")
 
     TextButton_2_Toggle.Parent = ToggleButton2
-    TextButton_2_Toggle.BackgroundColor3 = AZUL_OSCURO 
-    TextButton_2_Toggle.BorderColor3 = AZUL_OSCURO 
+    TextButton_2_Toggle.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
+    TextButton_2_Toggle.BorderColor3 = Color3.fromRGB(249, 53, 139)
     TextButton_2_Toggle.BorderSizePixel = 0
     TextButton_2_Toggle.AnchorPoint = Vector2.new(0.5, 0.5)
     TextButton_2_Toggle.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -652,7 +663,7 @@ function  ems:Toggle(text,de,callback)
 
     TextButton_3_Toggle.Parent = TextButton_2_Toggle
     TextButton_3_Toggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    TextButton_3_Toggle.BorderColor3 = AZUL_OSCURO 
+    TextButton_3_Toggle.BorderColor3 = Color3.fromRGB(255, 0, 95)
     TextButton_3_Toggle.BorderSizePixel = 0
     TextButton_3_Toggle.AnchorPoint = Vector2.new(0.5, 0.5)
     TextButton_3_Toggle.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -670,7 +681,7 @@ function  ems:Toggle(text,de,callback)
     ImageLabel_Toggle.BackgroundTransparency = 1
     ImageLabel_Toggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     ImageLabel_Toggle.Size = UDim2.new(0, 0, 0, 0)
-    ImageLabel_Toggle.Image = "rbxassetid://5880482965" 
+    ImageLabel_Toggle.Image = "rbxassetid://5880482965"
     ImageLabel_Toggle.AnchorPoint = Vector2.new(0.5, 0.5)
     ImageLabel_Toggle.Position = UDim2.new(0.47, 0, 0.5, 0)
 
@@ -679,7 +690,7 @@ function  ems:Toggle(text,de,callback)
             
     FrameToggle.CornerRadius = UDim.new(0, 4)
     FrameToggle.Name = ""
-    FrameToggle.Parent = ToggleButton
+    FrameToggle.Parent = emsTextButton
 
     local FrameToggle1 = Instance.new("UICorner")
             
@@ -778,7 +789,7 @@ function ems:DropDown(text,text2,list,callback)
 
     DropFrame.Name = "DropFrame"
     DropFrame.Parent = ScolPage2
-    DropFrame.BackgroundColor3 = AZUL_OSCURO 
+    DropFrame.BackgroundColor3 = Color3.fromRGB(255, 0 ,95)
     DropFrame.BorderSizePixel = 0
     DropFrame.BackgroundTransparency = 1
     DropFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -791,7 +802,7 @@ function ems:DropDown(text,text2,list,callback)
 
     TextLabelDrop.Parent = DropFrame
     TextLabelDrop.Name = "TextLabelDrop"
-    TextLabelDrop.BackgroundColor3 = AZUL_OSCURO 
+    TextLabelDrop.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     TextLabelDrop.BackgroundTransparency = 1
     TextLabelDrop.AnchorPoint = Vector2.new(0.5, 0.5)
     TextLabelDrop.Position = UDim2.new(0.5, 0, 0.2, 0)
@@ -807,7 +818,7 @@ function ems:DropDown(text,text2,list,callback)
     
     FrameDrop.Name = "FrameDrop"
     FrameDrop.Parent = DropFrame
-    FrameDrop.BackgroundColor3 = AZUL_OSCURO 
+    FrameDrop.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     FrameDrop.BorderSizePixel = 0
     FrameDrop.BackgroundTransparency = 1
     FrameDrop.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -819,7 +830,7 @@ function ems:DropDown(text,text2,list,callback)
     local DropButton = Instance.new("TextButton")
 
     DropButton.Parent = FrameDrop
-    DropButton.BackgroundColor3 = AZUL_OSCURO 
+    DropButton.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     DropButton.BackgroundTransparency = 1
     DropButton.AnchorPoint = Vector2.new(0.5, 0.5)
     DropButton.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -837,7 +848,7 @@ function ems:DropDown(text,text2,list,callback)
 
     TextLabelDrop2.Parent = DropButton
     TextLabelDrop2.Name = "TextLabelDrop"
-    TextLabelDrop2.BackgroundColor3 = AZUL_OSCURO 
+    TextLabelDrop2.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     TextLabelDrop2.BackgroundTransparency = 1
     TextLabelDrop2.AnchorPoint = Vector2.new(0.5, 0.5)
     TextLabelDrop2.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -847,433 +858,656 @@ function ems:DropDown(text,text2,list,callback)
     TextLabelDrop2.TextColor3 = Color3.fromRGB(255, 255, 255)
     TextLabelDrop2.TextSize = 10.000
     TextLabelDrop2.BorderSizePixel = 0
+    TextLabelDrop2.ClipsDescendants = true 
 
-    local FrameDrop2 = Instance.new("UICorner")
+    local DropConer = Instance.new("UICorner")
             
-    FrameDrop2.CornerRadius = UDim.new(0, 4)
-    FrameDrop2.Name = ""
-    FrameDrop2.Parent = FrameDrop
+    DropConer.CornerRadius = UDim.new(0, 4)
+    DropConer.Name = ""
+    DropConer.Parent = DropButton
 
-
-    local TextLabelDrop4 = Instance.new("TextLabel") 
-
-    TextLabelDrop4.Parent = DropButton
-    TextLabelDrop4.Name = "TextLabelDrop"
-    TextLabelDrop4.BackgroundColor3 = AZUL_OSCURO 
-    TextLabelDrop4.BackgroundTransparency = 1
-    TextLabelDrop4.AnchorPoint = Vector2.new(0.5, 0.5)
-    TextLabelDrop4.Position = UDim2.new(0.5, 0, 0.5, 0)
-    TextLabelDrop4.Size = UDim2.new(0, 155, 0, 22)
-    TextLabelDrop4.Font = Enum.Font.GothamSemibold
-    TextLabelDrop4.Text = "..."
-    TextLabelDrop4.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextLabelDrop4.TextSize = 10.000
-    TextLabelDrop4.BorderSizePixel = 0
-    TextLabelDrop4.Visible = false 
-
-
-    local DropScol = Instance.new("ScrollingFrame")
-    local UIListLayout_DropScol = Instance.new("UIListLayout")
-
-    DropScol.Name = "DropScol"
-    DropScol.Parent = DropFrame
-    DropScol.Active = true
-    DropScol.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    DropScol.BorderSizePixel = 0
-    DropScol.Size = UDim2.new(0, 155, 0, 0)
-    DropScol.Position = UDim2.new(0.5, 0, 0.5, 25)
-    DropScol.ScrollBarThickness = 3
-    DropScol.ScrollBarImageColor3 =  Color3.fromRGB(235, 235, 235)
-    DropScol.BackgroundTransparency = 1
+    local DropConer1 = Instance.new("UICorner")
+            
+    DropConer1.CornerRadius = UDim.new(0, 4)
+    DropConer1.Name = ""
+    DropConer1.Parent = FrameDrop
     
-    UIListLayout_DropScol.Parent = DropScol
-    UIListLayout_DropScol.SortOrder = Enum.SortOrder.LayoutOrder
-    UIListLayout_DropScol.Padding = UDim.new(0, 5)
 
     
-    local UIPadding_DropScol = Instance.new("UIPadding")
+    local TextButton_Dropdown = Instance.new("TextButton")
 
-    UIPadding_DropScol.Parent = DropScol
-    UIPadding_DropScol.PaddingTop = UDim.new(0, 5)
+    TextButton_Dropdown.Parent = DropButton
+    TextButton_Dropdown.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
+    TextButton_Dropdown.BorderSizePixel = 0
+    TextButton_Dropdown.Size = UDim2.new(0, 22, 0, 24)
+    TextButton_Dropdown.Font = Enum.Font.SourceSans
+    TextButton_Dropdown.Text = "  "
+    TextButton_Dropdown.TextColor3 = Color3.fromRGB(0, 0, 0)
+    TextButton_Dropdown.TextSize = 14.000
+    TextButton_Dropdown.AutoButtonColor = false 
+    TextButton_Dropdown.AnchorPoint = Vector2.new(0.5, 0.5)
+    TextButton_Dropdown.Position = UDim2.new(0.91, 0, 0.5, 0)
+    
+    local DropConer2 = Instance.new("UICorner")
+            
+    DropConer2.CornerRadius = UDim.new(0, 4)
+    DropConer2.Name = ""
+    DropConer2.Parent = TextButton_Dropdown
+
+    local DropArbt_listimage = Instance.new("ImageButton")
+                            
+    DropArbt_listimage.Parent = TextButton_Dropdown
+    DropArbt_listimage.BackgroundTransparency = 1
+    DropArbt_listimage.AnchorPoint = Vector2.new(0.5, 0.5)
+    DropArbt_listimage.Position = UDim2.new(0.5, 0, 0.5, 0)
+    DropArbt_listimage.BorderSizePixel = 0
+    DropArbt_listimage.Size = UDim2.new(0, 20, 0, 20)
+    DropArbt_listimage.Image = "http://www.roblox.com/asset/?id=6031091004"
+
+    local ListFrame = Instance.new("Frame")
+    
+    ListFrame.Name = "ListFrame"
+    ListFrame.Parent = ScolPage2
+    ListFrame.BackgroundColor3 = Color3.fromRGB(255, 0 ,95)
+    ListFrame.BorderSizePixel = 0
+    ListFrame.BackgroundTransparency = 1
+    ListFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    ListFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    ListFrame.Size = UDim2.new(0, 155, 0, 0)
+    ListFrame.BorderSizePixel = 0 
+    ListFrame.ClipsDescendants = true 
+    ListFrame.Visible = false 
+
+    local ScolPage_list = Instance.new("ScrollingFrame")
 
 
-    for i,v in next , list do 
+    local UIListLayout_MainPage_list = Instance.new("UIListLayout")
+    local UIPadding_MainPage_list = Instance.new("UIPadding")
+
+
+    ScolPage_list.Name = "ScolPage_list"
+    ScolPage_list.Parent = ListFrame
+    ScolPage_list.Active = true
+    ScolPage_list.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    ScolPage_list.BorderSizePixel = 0
+    ScolPage_list.Size = UDim2.new(0, 155, 0, 0)
+    ScolPage_list.ScrollBarThickness = 3
+    ScolPage_list.AnchorPoint = Vector2.new(0.5, 0.5)
+    ScolPage_list.Position = UDim2.new(0.5, 0, 0.5, 0)
+    ScolPage_list.ClipsDescendants = true 
+    ScolPage_list.ScrollBarImageColor3 =  Color3.fromRGB(235, 235, 235)
+    ScolPage_list.ScrollBarImageColor3 =  Color3.fromRGB(235, 235, 235)
+
+    UIListLayout_MainPage_list.Parent = ScolPage_list
+    UIListLayout_MainPage_list.SortOrder = Enum.SortOrder.LayoutOrder
+    UIListLayout_MainPage_list.Padding = UDim.new(0, 5)
+
+    UIPadding_MainPage_list.Parent = ScolPage_list
+    UIPadding_MainPage_list.PaddingLeft = UDim.new(0, 0)
+    UIPadding_MainPage_list.PaddingTop = UDim.new(0, 0)
+
+
+    local DropConer4 = Instance.new("UICorner")
+            
+    DropConer4.CornerRadius = UDim.new(0, 4)
+    DropConer4.Name = ""
+    DropConer4.Parent = ListFrame
+
+    local framesize =  50
+    local count = 0 
+    for i , v in pairs(list) do 
+        count = count + 1 
         
-        local ListButton = Instance.new("TextButton")
-
-        ListButton.Parent = DropScol
-        ListButton.BackgroundColor3 = AZUL_OSCURO 
-        ListButton.BackgroundTransparency = 0
-        ListButton.AnchorPoint = Vector2.new(0.5, 0.5)
-        ListButton.Position = UDim2.new(0.5, 0, 0.5, 0)
-        ListButton.Size = UDim2.new(1, -10, 0, 20)
-        ListButton.Font = Enum.Font.GothamSemibold
-        ListButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        ListButton.TextSize = 11.000
-        ListButton.TextWrapped = true
-        ListButton.Text = v
-        ListButton.BorderSizePixel = 0 
-        ListButton.AutoButtonColor = false 
-
-        local ListFrame = Instance.new("UICorner")
-            
-        ListFrame.CornerRadius = UDim.new(0, 4)
-        ListFrame.Name = ""
-        ListFrame.Parent = ListButton
-
-        ListButton.MouseButton1Click:Connect(function (  )
-            TextLabelDrop2.Text = v.. " : "
-            TextLabelDrop4.Text = v
-            checkdrop.checkscol = not checkdrop.checkscol
-            FrameDrop:TweenSize(UDim2.new(0, 155, 0, 27), "Out", "Quad", 0.2, true)
-            DropScol:TweenSize(UDim2.new(0, 155, 0, 0), "Out", "Quad", 0.2, true)
-            wait(0.2)
-            pcall(callback,v)
-        end)
-    end
-    
-
-    DropButton.MouseButton1Click:Connect(function (  )
-        if checkdrop.checkscol == false then
-            FrameDrop:TweenSize(UDim2.new(0, 155, 0, 150), "Out", "Quad", 0.2, true)
-            DropScol:TweenSize(UDim2.new(0, 155, 0, 120), "Out", "Quad", 0.2, true)
-        else
-            FrameDrop:TweenSize(UDim2.new(0, 155, 0, 27), "Out", "Quad", 0.2, true)
-            DropScol:TweenSize(UDim2.new(0, 155, 0, 0), "Out", "Quad", 0.2, true)
+        if count == 1 then
+            framesize = 50 
+        elseif count == 2 then
+            framesize = 70 
+        elseif count >= 3 then
+            framesize = 150 
         end
-        checkdrop.checkscol = not checkdrop.checkscol
-    end)
-    
-    function dropfuc : Change(new)
-        TextLabelDrop2.Text = tostring(new)
+
+    local listDropButton = Instance.new("TextButton")
+
+    listDropButton.Parent = ScolPage_list
+    listDropButton.BackgroundColor3 = Color3.fromRGB(15, 15 ,15)
+    listDropButton.BorderSizePixel = 0
+    listDropButton.Size = UDim2.new(0, 155, 0, 24)
+    listDropButton.Font = Enum.Font.GothamSemibold
+    listDropButton.Text = tostring(v)
+    listDropButton.TextColor3 = Color3.fromRGB(255, 20, 95)
+    listDropButton.TextSize = 11.000
+    listDropButton.AutoButtonColor = false 
+    listDropButton.AnchorPoint = Vector2.new(0.5, 0.5)
+    listDropButton.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+    listDropButton.MouseButton1Click:Connect(function()
+        TweenService:Create(
+            ListFrame,
+            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size =  UDim2.new(0, 155, 0, 0)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+        TweenService:Create(
+            ScolPage_list,
+            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size =  UDim2.new(0, 155, 0, 0)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+        repeat
+            wait()
+        until ScolPage_list.Size ==  UDim2.new(0, 155, 0, 0)
+        ListFrame.Visible = false
+        TextLabelDrop2.Text = text2.." : "..tostring(v)  
+        callback(v)
     end
-    return dropfuc
+)
+
+    listDropButton.MouseEnter:Connect(function ()
+        TweenService:Create(
+            listDropButton,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {BackgroundColor3 = Color3.fromRGB(25, 25, 25)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+    end)
+    listDropButton.MouseLeave:Connect(function ()
+        TweenService:Create(
+            listDropButton,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {BackgroundColor3 = Color3.fromRGB(15, 15, 15)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+    end)
+
+    ScolPage_list.CanvasSize = UDim2.new(0,0,0,UIListLayout_MainPage_list.AbsoluteContentSize.Y + 10)  
+
+
+
 end
 
+    DropArbt_listimage.MouseButton1Click:Connect(function()     
+        if checkdrop.checkscol == false then 
+            ListFrame.Visible = true 
+            TweenService:Create(
+                DropArbt_listimage,
+                TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+                {Rotation = -180}
+            ):Play()
+            TweenService:Create(
+                ListFrame,
+                TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {Size =  UDim2.new(0, 155, 0, framesize)} -- UDim2.new(0, 128, 0, 25)
+            ):Play()
+            TweenService:Create(
+                ScolPage_list,
+                TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {Size =  UDim2.new(0, 155, 0, framesize)} -- UDim2.new(0, 128, 0, 25)
+            ):Play()
 
-function ems:Slider(text,min,max,default,callback)
-
-    local DropFrame = Instance.new("Frame")
-    local sliderfuc = {}
-
-    DropFrame.Name = "DropFrame"
-    DropFrame.Parent = ScolPage2
-    DropFrame.BackgroundColor3 = AZUL_OSCURO 
-    DropFrame.BorderSizePixel = 0
-    DropFrame.BackgroundTransparency = 1
-    DropFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    DropFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    DropFrame.Size = UDim2.new(0, 155, 0, 45)
-    DropFrame.BackgroundTransparency = 1
-
-    local TextLabelDrop = Instance.new("TextLabel") 
-
-    TextLabelDrop.Parent = DropFrame
-    TextLabelDrop.Name = "TextLabelDrop"
-    TextLabelDrop.BackgroundColor3 = AZUL_OSCURO 
-    TextLabelDrop.BackgroundTransparency = 1
-    TextLabelDrop.AnchorPoint = Vector2.new(0.5, 0.5)
-    TextLabelDrop.Position = UDim2.new(0.5, 0, 0.2, 0)
-    TextLabelDrop.Size = UDim2.new(0, 155, 0, 15)
-    TextLabelDrop.Font = Enum.Font.GothamSemibold
-    TextLabelDrop.Text = text
-    TextLabelDrop.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextLabelDrop.TextSize = 10.000
-    TextLabelDrop.BorderSizePixel = 0
-    TextLabelDrop.ClipsDescendants = true 
-
-    local FrameDrop = Instance.new("Frame")
-    
-    FrameDrop.Name = "FrameDrop"
-    FrameDrop.Parent = DropFrame
-    FrameDrop.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    FrameDrop.BorderSizePixel = 0
-    FrameDrop.BackgroundTransparency = 0
-    FrameDrop.AnchorPoint = Vector2.new(0.5, 0.5)
-    FrameDrop.Position = UDim2.new(0.5, 0, 0.75, 0)
-    FrameDrop.Size = UDim2.new(0, 155, 0, 20)
-    FrameDrop.BackgroundTransparency = 0
-    FrameDrop.ClipsDescendants = true 
-
-
-    local Sliderframe = Instance.new("Frame")
-    
-    Sliderframe.Name = "Sliderframe"
-    Sliderframe.Parent = FrameDrop
-    Sliderframe.BackgroundColor3 = AZUL_OSCURO 
-    Sliderframe.BorderSizePixel = 0
-    Sliderframe.BackgroundTransparency = 0
-    Sliderframe.AnchorPoint = Vector2.new(0, 0.5)
-    Sliderframe.Position = UDim2.new(0, 0, 0.5, 0)
-    Sliderframe.Size = UDim2.new(0, 0, 0, 20)
-    Sliderframe.BackgroundTransparency = 0
-    
-    local TextLabelSlider = Instance.new("TextLabel") 
-
-    TextLabelSlider.Parent = DropFrame
-    TextLabelSlider.Name = "TextLabelDrop"
-    TextLabelSlider.BackgroundColor3 = AZUL_OSCURO 
-    TextLabelSlider.BackgroundTransparency = 1
-    TextLabelSlider.AnchorPoint = Vector2.new(0.5, 0.5)
-    TextLabelSlider.Position = UDim2.new(0.5, 0, 0.75, 0)
-    TextLabelSlider.Size = UDim2.new(0, 155, 0, 20)
-    TextLabelSlider.Font = Enum.Font.GothamSemibold
-    TextLabelSlider.Text = default
-    TextLabelSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextLabelSlider.TextSize = 10.000
-    TextLabelSlider.BorderSizePixel = 0
-    TextLabelSlider.BackgroundTransparency = 1
+    else
+        TweenService:Create(
+            DropArbt_listimage,
+            TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+            {Rotation = 0}
+        ):Play()
+        TweenService:Create(
+            ListFrame,
+            TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size =  UDim2.new(0, 155, 0, 0)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+        TweenService:Create(
+            ScolPage_list,
+            TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size =  UDim2.new(0, 155, 0, 0)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+        repeat
+            wait()
+        until ScolPage_list.Size ==  UDim2.new(0, 155, 0, 0)
+        ListFrame.Visible = false
+        end
+        checkdrop.checkscol  = not    checkdrop.checkscol  
+        pcall(callback,   checkdrop.checkscol )
+    end)
 
 
-    local FrameDrop2 = Instance.new("UICorner")
-            
-    FrameDrop2.CornerRadius = UDim.new(0, 4)
-    FrameDrop2.Name = ""
-    FrameDrop2.Parent = FrameDrop
-    
-    local FrameDrop3 = Instance.new("UICorner")
-            
-    FrameDrop3.CornerRadius = UDim.new(0, 4)
-    FrameDrop3.Name = ""
-    FrameDrop3.Parent = Sliderframe
+    DropButton.MouseButton1Click:Connect(function()     
+        if checkdrop.checkscol == false then 
+            ListFrame.Visible = true 
+            TweenService:Create(
+                DropArbt_listimage,
+                TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+                {Rotation = -180}
+            ):Play()
+            TweenService:Create(
+                ListFrame,
+                TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {Size =  UDim2.new(0, 155, 0, framesize)} -- UDim2.new(0, 128, 0, 25)
+            ):Play()
+            TweenService:Create(
+                ScolPage_list,
+                TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {Size =  UDim2.new(0, 155, 0, framesize)} -- UDim2.new(0, 128, 0, 25)
+            ):Play()
+
+    else
+        TweenService:Create(
+            DropArbt_listimage,
+            TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+            {Rotation = 0}
+        ):Play()
+        TweenService:Create(
+            ListFrame,
+            TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size =  UDim2.new(0, 155, 0, 0)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+        TweenService:Create(
+            ScolPage_list,
+            TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size =  UDim2.new(0, 155, 0, 0)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+        repeat
+            wait()
+        until ScolPage_list.Size ==  UDim2.new(0, 155, 0, 0)
+        ListFrame.Visible = false
+        end
+        checkdrop.checkscol  = not    checkdrop.checkscol  
+        pcall(callback,   checkdrop.checkscol )
+    end)
+
+    function dropfuc:Add(text2)
+       
+    local listDropButton = Instance.new("TextButton")
+
+    listDropButton.Parent = ScolPage_list
+    listDropButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    listDropButton.BorderSizePixel = 0
+    listDropButton.Size = UDim2.new(0, 155, 0, 24)
+    listDropButton.Font = Enum.Font.GothamSemibold
+    listDropButton.Text = tostring(text2)
+    listDropButton.TextColor3 = Color3.fromRGB(255, 0, 95)
+    listDropButton.TextSize = 11.000
+    listDropButton.AutoButtonColor = false 
+    listDropButton.AnchorPoint = Vector2.new(0.5, 0.5)
+    listDropButton.Position = UDim2.new(0.5, 0, 0.5, 0)
 
 
-    local drag = false 
-    local drag2 = false
-    local newvalue = default 
 
-    Sliderframe.Size = UDim2.new(0, default, 0, 20)
-    
-    local function onDrag(input)
-        local mousePos = input.Position
-        local pos = math.clamp(mousePos.X - FrameDrop.AbsolutePosition.X, 0, FrameDrop.AbsoluteSize.X)
-        local value = math.round((pos / FrameDrop.AbsoluteSize.X) * (max - min) + min)
+    listDropButton.MouseButton1Click:Connect(function()
+        TweenService:Create(
+            ListFrame,
+            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size =  UDim2.new(0, 140, 0, 0)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+        TweenService:Create(
+            ScolPage_list,
+            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            {Size =  UDim2.new(0, 140, 0, 0)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+        repeat
+            wait()
+        until ScolPage_list.Size ==  UDim2.new(0, 140, 0, 0)
+        ListFrame.Visible = false
+        TextLabelDrop2.Text = text.." : "..tostring(text2)  
+        callback(text2)
+    end
+)
 
-        Sliderframe.Size = UDim2.new(0, pos, 0, 20)
-        TextLabelSlider.Text = value
-        newvalue = value
+    listDropButton.MouseEnter:Connect(function ()
+        TweenService:Create(
+            listDropButton,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {BackgroundColor3 = Color3.fromRGB(25, 25, 25)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+    end)
+    listDropButton.MouseLeave:Connect(function ()
+        TweenService:Create(
+            listDropButton,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {BackgroundColor3 = Color3.fromRGB(15, 15, 15)} -- UDim2.new(0, 128, 0, 25)
+        ):Play()
+    end)
 
-        pcall(callback, value)
+    ScolPage_list.CanvasSize = UDim2.new(0,0,0,UIListLayout_MainPage_list.AbsoluteContentSize.Y + 10)  
+
+
     end
 
-    FrameDrop.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            drag = true
-            onDrag(input)
+    function dropfuc:Clear()
+    for i, v in next, ScolPage_list:GetChildren() do
+        if v:IsA("TextButton")  then 
+        v:Destroy()
+        
         end
-    end)
-    
-    FrameDrop.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and drag then
-            onDrag(input)
-        end
-    end)
+        ScolPage_list.CanvasSize = UDim2.new(0,0,0,UIListLayout_MainPage_list.AbsoluteContentSize.Y + 10)  
+    end   
 
-    FrameDrop.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            drag = false
-        end
-    end)
-
-    function sliderfuc : Change(new)
-        TextLabelSlider.Text = tostring(new)
-        newvalue = new
-    end
-    return sliderfuc
+end  
+    return  dropfuc
 end
 
+function ems:Slder(text,min,max,de,callback)
+    local SliderFunc = {}
+    local SliderFrame = Instance.new("Frame")
 
-function ems:TextBox(text,text2,callback)
+
+    SliderFrame.Name = "SliderFrame"
+    SliderFrame.Parent = ScolPage2
+    SliderFrame.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    SliderFrame.BorderSizePixel = 0
+    SliderFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    SliderFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    SliderFrame.Size = UDim2.new(0, 155, 0, 50)
+    SliderFrame.BackgroundTransparency = 1
+    SliderFrame.ClipsDescendants = true 
+
+    local fakeclick = Instance.new("TextButton",SliderFrame)
+
+    fakeclick.BackgroundColor3 = Color3.fromRGB(15,15,15)
+    fakeclick.BorderSizePixel = 0
+    fakeclick.Size = UDim2.new(1, 0, 1, 0)
+    fakeclick.Font = Enum.Font.GothamSemibold
+    fakeclick.Text = ""
+    fakeclick.TextColor3 = Color3.fromRGB(255, 255, 255)
+    fakeclick.Transparency = 1
+    fakeclick.TextSize = 10.000
+    fakeclick.AutoButtonColor = false 
+    fakeclick.AnchorPoint = Vector2.new(0.5, 0.5)
+    fakeclick.Position = UDim2.new(0.5, 0, 0.3, 0)
+
+    local Conner_SliderFrame1 = Instance.new("UICorner")
+       
+    Conner_SliderFrame1.CornerRadius = UDim.new(0, 5)
+    Conner_SliderFrame1.Name = ""
+    Conner_SliderFrame1.Parent = SliderFrame
+
+    local SlisFrameStroke = Instance.new("UIStroke",SliderFrame)
+                    
+    SlisFrameStroke.Thickness = 1
+    SlisFrameStroke.LineJoinMode = Enum.LineJoinMode.Round
+    SlisFrameStroke.Color = Color3.fromRGB(255, 0, 95)
+    SlisFrameStroke.Transparency = 0
+    local TalabelSlider = Instance.new("TextLabel") 
+
+    TalabelSlider.Parent = SliderFrame
+    TalabelSlider.Name = "TalabelSlider"
+    TalabelSlider.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
+    TalabelSlider.BackgroundTransparency = 1
+    TalabelSlider.AnchorPoint = Vector2.new(0.5, 0.5)
+    TalabelSlider.Position = UDim2.new(0.5, 0, 0.2, 0)
+    TalabelSlider.Size = UDim2.new(0, 145, 0, 20)
+    TalabelSlider.Font = Enum.Font.GothamSemibold
+    TalabelSlider.Text = text
+    TalabelSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TalabelSlider.TextSize = 11.000
+    TalabelSlider.BorderSizePixel = 0
+    TalabelSlider.ClipsDescendants = true 
+    TalabelSlider.TextXAlignment = Enum.TextXAlignment.Left
+
+       
+    local ValueFrame = Instance.new("Frame")
+
+    ValueFrame.Name = "ValueFrame"
+    ValueFrame.Parent = SliderFrame
+    ValueFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    ValueFrame.BorderSizePixel = 0
+    ValueFrame.BackgroundTransparency = 0
+    ValueFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    ValueFrame.Position = UDim2.new(0.5, 0, 0.7, 0)
+    ValueFrame.Size = UDim2.new(0, 145, 0, 20)
+    ValueFrame.BackgroundTransparency = 1
+    ValueFrame.ClipsDescendants = true 
+
+    local SecValue = Instance.new("Frame")
+
+    SecValue.Name = "SecValue"
+    SecValue.Parent = ValueFrame
+    SecValue.BackgroundColor3 = Color3.fromRGB(155, 155, 155)
+    SecValue.BorderSizePixel = 0
+    SecValue.BackgroundTransparency = 0
+    SecValue.AnchorPoint = Vector2.new(0.5, 0.5)
+    SecValue.Position = UDim2.new(0.5, 0, 0.5, 0)
+    SecValue.Size = UDim2.new(0, 135, 0, 4)
+    SecValue.BackgroundTransparency = 0
+    SecValue.ClipsDescendants = false 
+
     
-    local textboxdoc = {}
-    local DropFrame = Instance.new("Frame")
+    local MainValue = Instance.new("Frame")
 
-    DropFrame.Name = "DropFrame"
-    DropFrame.Parent = ScolPage2
-    DropFrame.BackgroundColor3 = AZUL_OSCURO 
-    DropFrame.BorderSizePixel = 0
-    DropFrame.BackgroundTransparency = 1
-    DropFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    DropFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    DropFrame.Size = UDim2.new(0, 155, 0, 45)
-    DropFrame.BackgroundTransparency = 1
+    MainValue.Name = "MainValue"
+    MainValue.Parent = SecValue
+    MainValue.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
+    MainValue.BorderSizePixel = 0
+    MainValue.BackgroundTransparency = 0
+    -- MainValue.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainValue.Position = UDim2.new(0., 0, 0., 0)
+    MainValue.Size = UDim2.new((de or 0) / max, 0, 0, 4)
+    MainValue.BackgroundTransparency = 0
+    MainValue.ClipsDescendants = false 
 
-    local TextLabelDrop = Instance.new("TextLabel") 
+     
+    local ConneValue = Instance.new("Frame")
 
-    TextLabelDrop.Parent = DropFrame
-    TextLabelDrop.Name = "TextLabelDrop"
-    TextLabelDrop.BackgroundColor3 = AZUL_OSCURO 
-    TextLabelDrop.BackgroundTransparency = 1
-    TextLabelDrop.AnchorPoint = Vector2.new(0.5, 0.5)
-    TextLabelDrop.Position = UDim2.new(0.5, 0, 0.2, 0)
-    TextLabelDrop.Size = UDim2.new(0, 155, 0, 15)
-    TextLabelDrop.Font = Enum.Font.GothamSemibold
-    TextLabelDrop.Text = text
-    TextLabelDrop.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextLabelDrop.TextSize = 10.000
-    TextLabelDrop.BorderSizePixel = 0
-    TextLabelDrop.ClipsDescendants = true 
+    ConneValue.Name = "ConneValue"
+    ConneValue.Parent = SecValue
+    ConneValue.BackgroundColor3 = Color3.fromRGB(255,255, 255)
+    ConneValue.Size = UDim2.new(0, 10, 0, 10)
+    ConneValue.BackgroundTransparency = 0
+    ConneValue.BorderSizePixel = 0 
+    ConneValue.AnchorPoint = Vector2.new(0.5, 0.5)
+    ConneValue.Position = UDim2.new((de or 0)/max, 0.5, 0.5,0.5, 0) 
+    ConneValue.ClipsDescendants = false 
 
-    local FrameDrop = Instance.new("Frame")
-    
-    FrameDrop.Name = "FrameDrop"
-    FrameDrop.Parent = DropFrame
-    FrameDrop.BackgroundColor3 = AZUL_OSCURO 
-    FrameDrop.BorderSizePixel = 0
-    FrameDrop.BackgroundTransparency = 1
-    FrameDrop.AnchorPoint = Vector2.new(0.5, 0.5)
-    FrameDrop.Position = UDim2.new(0.5, 0, 0.75, 0)
-    FrameDrop.Size = UDim2.new(0, 155, 0, 20)
-    FrameDrop.BackgroundTransparency = 0
-    FrameDrop.ClipsDescendants = true 
+    local Conner_Conne = Instance.new("UICorner")
+                    
+    Conner_Conne.CornerRadius = UDim.new(0, 10)
+    Conner_Conne.Name = ""
+    Conner_Conne.Parent = ConneValue
 
-    local TextBox = Instance.new("TextBox")
-
-    TextBox.Parent = FrameDrop
-    TextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    TextBox.BackgroundTransparency = 0
-    TextBox.AnchorPoint = Vector2.new(0.5, 0.5)
-    TextBox.Position = UDim2.new(0.5, 0, 0.5, 0)
-    TextBox.Size = UDim2.new(0, 155, 0, 20)
-    TextBox.Font = Enum.Font.GothamSemibold
-    TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextBox.TextSize = 10.000
-    TextBox.TextWrapped = true
-    TextBox.Text = text2
-    TextBox.BorderSizePixel = 0 
-    TextBox.ClearTextOnFocus = false 
-
-    local FrameDrop2 = Instance.new("UICorner")
             
-    FrameDrop2.CornerRadius = UDim.new(0, 4)
-    FrameDrop2.Name = ""
-    FrameDrop2.Parent = FrameDrop
+    local ScolDown_Uiconner2 = Instance.new("UICorner")
+                
+    ScolDown_Uiconner2.CornerRadius = UDim.new(0, 8)
+    ScolDown_Uiconner2.Name = ""
+    ScolDown_Uiconner2.Parent = MainValue
 
-    TextBox.FocusLost:Connect(function (enter)
-        if enter then
-            pcall(callback,TextBox.Text)
+    local ScolDown_Uiconner3 = Instance.new("UICorner")
+        
+    ScolDown_Uiconner3.CornerRadius = UDim.new(0, 8)
+    ScolDown_Uiconner3.Name = ""
+    ScolDown_Uiconner3.Parent = SecValue
+
+
+    
+    local ShowValueFarm = Instance.new("Frame")
+
+    ShowValueFarm.Name = "ShowValueFarm"
+    ShowValueFarm.Parent = SliderFrame
+    ShowValueFarm.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    ShowValueFarm.Size = UDim2.new(0, 50, 0, 14)
+    ShowValueFarm.BackgroundTransparency = 1
+    ShowValueFarm.BorderSizePixel = 0 
+    ShowValueFarm.AnchorPoint = Vector2.new(0.5, 0.5)
+    ShowValueFarm.Position = UDim2.new(0.80, 0, 0.28, 0)
+    ShowValueFarm.ClipsDescendants = false
+
+    local MheeFrameStroke1 = Instance.new("UIStroke",ShowValueFarm)
+                    
+    MheeFrameStroke1.Thickness = 1
+    MheeFrameStroke1.LineJoinMode = Enum.LineJoinMode.Round
+    MheeFrameStroke1.Color = Color3.fromRGB(255, 0, 95)
+    MheeFrameStroke1.Transparency = 0
+
+    local CustomValue = Instance.new("TextBox")
+
+    CustomValue.Parent = ShowValueFarm
+    CustomValue.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    CustomValue.BorderSizePixel = 0
+    CustomValue.ClipsDescendants = true
+    CustomValue.AnchorPoint = Vector2.new(0.5, 0.5)
+    CustomValue.Position = UDim2.new(0.5, 0, 0.5, 0)
+    CustomValue.Size = UDim2.new(0, 145, 0, 26)
+    CustomValue.Font = Enum.Font.GothamSemibold
+    CustomValue.PlaceholderColor3 = Color3.fromRGB(222, 222, 222)
+    CustomValue.PlaceholderText =  ""
+    CustomValue.Text =  tostring(de and math.floor((de / max) * (max - min) + min) or 0)
+    CustomValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CustomValue.TextSize = 9.000
+    CustomValue.BackgroundTransparency = 1
+
+    local ScolDown_Uiconner3222 = Instance.new("UICorner")
+        
+    ScolDown_Uiconner3222.CornerRadius = UDim.new(0, 4)
+    ScolDown_Uiconner3222.Name = ""
+    ScolDown_Uiconner3222.Parent = ShowValueFarm
+    local function move(input)
+        local pos =
+            UDim2.new(
+                math.clamp((input.Position.X - SecValue.AbsolutePosition.X) / SecValue.AbsoluteSize.X, 0, 1),
+                0,
+                0.5,
+                0
+            )
+        local pos1 =
+            UDim2.new(
+                math.clamp((input.Position.X - SecValue.AbsolutePosition.X) / SecValue.AbsoluteSize.X, 0, 1),
+                0,
+                0,
+                5
+            )
+        
+            MainValue:TweenSize(pos1, "Out", "Sine", 0.2, true)
+
+            ConneValue:TweenPosition(pos, "Out", "Sine", 0.2, true)
+            local value = math.floor(((pos.X.Scale * max) / max) * (max - min) + min)
+            CustomValue.Text = tostring(value)
+            callback(value)
+
         end
-    end)
+        local dragging = false 
+        ConneValue.InputBegan:Connect(
+            function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
 
-    function textboxdoc : Change(text)
-        TextBox.Text = tostring(text)
-    end
-    return textboxdoc
-end
-
-
-function ems:Color(text,callback)
-
-    local FrameCol = Instance.new("Frame")
-    
-    FrameCol.Name = "FrameCol"
-    FrameCol.Parent = ScolPage2
-    FrameCol.BackgroundColor3 = AZUL_OSCURO 
-    FrameCol.BorderSizePixel = 0
-    FrameCol.BackgroundTransparency = 1
-    FrameCol.Position = UDim2.new(0.5, 0, 0.5, 0)
-    FrameCol.Size = UDim2.new(0, 155, 0, 45)
-    FrameCol.ClipsDescendants = true 
-
-    local TextLabelCol = Instance.new("TextLabel") 
-
-    TextLabelCol.Parent = FrameCol
-    TextLabelCol.Name = "TextLabelCol"
-    TextLabelCol.BackgroundColor3 = AZUL_OSCURO 
-    TextLabelCol.BackgroundTransparency = 1
-    TextLabelCol.AnchorPoint = Vector2.new(0.5, 0.5)
-    TextLabelCol.Position = UDim2.new(0.5, 0, 0.2, 0)
-    TextLabelCol.Size = UDim2.new(0, 155, 0, 15)
-    TextLabelCol.Font = Enum.Font.GothamSemibold
-    TextLabelCol.Text = text
-    TextLabelCol.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextLabelCol.TextSize = 10.000
-    TextLabelCol.BorderSizePixel = 0
-    TextLabelCol.ClipsDescendants = true 
-    
-    local Color = Instance.new("ColorPicker")
-
-    Color.Parent = FrameCol
-    Color.BackgroundColor3 = AZUL_OSCURO 
-    Color.BackgroundTransparency = 0
-    Color.AnchorPoint = Vector2.new(0.5, 0.5)
-    Color.Position = UDim2.new(0.5, 0, 0.75, 0)
-    Color.Size = UDim2.new(0, 155, 0, 20)
-
-    local FrameCol2 = Instance.new("UICorner")
+                end
+            end
+        )
+        ConneValue.InputEnded:Connect(
+            function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                 
+                end
+            end
+        )
             
-    FrameCol2.CornerRadius = UDim.new(0, 4)
-    FrameCol2.Name = ""
-    FrameCol2.Parent = Color
+        
+        ValueFrame.InputBegan:Connect(
+            function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
+
+                end
+            end
+        )
+        ValueFrame.InputEnded:Connect(
+            function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                 
+                end
+            end
+        )
 
 
-    Color:GetPropertyChangedSignal("Color"):Connect(function (  )
-        pcall(callback,Color.Color)
-    end)
-    
+        game:GetService("UserInputService").InputChanged:Connect(
+            function(input)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    move(input)
+                end
+            end
+            )
+                   CustomValue.FocusLost:Connect(function()    
+                        MainValue:TweenSize(UDim2.new((CustomValue.Text or 0) / max, 0, 0, 5), "Out", "Sine", 0.2, true)
+                        ConneValue:TweenPosition(UDim2.new((CustomValue.Text or 0)/max, 0,0.5, 0) , "Out", "Sine", 0.2, true)
+                        CustomValue.Text = tostring(CustomValue.Text and math.floor((CustomValue.Text / max) * (max - min) + min) )
+                        pcall(callback,tonumber( CustomValue.Text))
+                        -- if  CustomValue.Text == "" then
+
+                        --     MainValue:TweenSize(UDim2.new((CustomValue.PlaceholderText  or 0) / max, 0, 0, 2), "Out", "Sine", 0.2, true)
+                        --     ConneValue:TweenPosition(UDim2.new((CustomValue.PlaceholderText  or 0)/max, 0,0, 0) , "Out", "Sine", 0.2, true)
+                        --     CustomValue.Text = tostring(CustomValue.PlaceholderText  and math.floor((    CustomValue.PlaceholderText  / max) * (max - min) + min) or 0)
+                        --     pcall(callback,CustomValue.PlaceholderText ) 
+                        -- end
+                    end)
+
+				function SliderFunc:change(tochange)
+                    MainValue:TweenSize(UDim2.new((tochange or 0) / max, 0, 0, 5), "Out", "Sine", 0.2, true)
+                    ConneValue:TweenPosition(UDim2.new((tochange or 0)/max, 0,0.5, 0) , "Out", "Sine", 0.2, true)
+					CustomValue.Text = tostring(tochange and math.floor((CustomValue.Text / max) * (max - min) + min) )
+					pcall(callback, tonumber(tochange))
+				end
+                return  SliderFunc
+                
 end
 
-function ems : Line(text)
+function ems:Ti(text)
+    local tiframe = Instance.new("Frame")
 
-    local lineframe = Instance.new("Frame")
+    tiframe.Name = "tiframe"
+    tiframe.Parent = ScolPage2
+    tiframe.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    tiframe.BackgroundTransparency = 1
+    tiframe.BorderSizePixel = 0
+    tiframe.ClipsDescendants = true
+    tiframe.AnchorPoint = Vector2.new(0.5, 0.5)
+    tiframe.Position = UDim2.new(0.5, 0, 0.5, 0)
+    tiframe.Size = UDim2.new(0, 155, 0, 20)
 
-    lineframe.Parent = ScolPage2
-    lineframe.BackgroundColor3 = AZUL_OSCURO 
-    lineframe.BackgroundTransparency = 1
-    lineframe.AnchorPoint = Vector2.new(0.5, 0.5)
-    lineframe.Position = UDim2.new(0.5, 0, 0.5, 0)
+    local  lineframe = Instance.new("TextLabel")
+                  
+    lineframe.Parent = tiframe
+    lineframe.BackgroundColor3 = Color3.fromRGB(255, 0 ,95)
+    lineframe.BackgroundTransparency = 0
+    lineframe.AnchorPoint = Vector2.new(0.6, 0.5)
+    lineframe.Position = UDim2.new(0., 0, 0.4, 0)
     lineframe.BorderSizePixel = 0
-    lineframe.Size = UDim2.new(0, 155, 0, 13)
-    lineframe.BackgroundTransparency = 1
+    lineframe.Size = UDim2.new(0, 40, 0, 1)
+    lineframe.Font = Enum.Font.GothamSemibold
+    lineframe.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lineframe.TextSize = 13.000
+    lineframe.Text = ""
 
-
-    local lineframe2 = Instance.new("Frame")
-
-    lineframe2.Parent = lineframe
-    lineframe2.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    local  lineframe2 = Instance.new("TextLabel")
+                  
+    lineframe2.Parent = tiframe
+    lineframe2.BackgroundColor3 = Color3.fromRGB(255, 0, 95)
     lineframe2.BackgroundTransparency = 0
     lineframe2.AnchorPoint = Vector2.new(0.5, 0.5)
-    lineframe2.Position = UDim2.new(0.5, 0, 0.5, 0)
+    lineframe2.Position = UDim2.new(1, 0, 0.4, 0)
     lineframe2.BorderSizePixel = 0
-    lineframe2.Size = UDim2.new(1, 0, 0, 2)
-    lineframe2.BackgroundTransparency = 0
-    
-    local lineframe3 = Instance.new("TextLabel")
+    lineframe2.Size = UDim2.new(0, 40, 0, 1)
+    lineframe2.Font = Enum.Font.GothamSemibold
+    lineframe2.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lineframe2.TextSize = 11.000
+    lineframe2.Text = ""
 
-    lineframe3.Parent = lineframe
+    local  lineframe3 = Instance.new("TextLabel")
+                  
+    lineframe3.Parent = tiframe
     lineframe3.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     lineframe3.BackgroundTransparency = 1
     lineframe3.AnchorPoint = Vector2.new(0.5, 0.5)
     lineframe3.Position = UDim2.new(0.5, 0, 0.5, 0)
     lineframe3.BorderSizePixel = 0
-    lineframe3.Size = UDim2.new(0, 155, 0, 13)
+    lineframe3.Size = UDim2.new(0, 130, 0, 20)
     lineframe3.Font = Enum.Font.GothamSemibold
     lineframe3.Text = tostring(text)
-    lineframe3.TextColor3 = AZUL_OSCURO
+    lineframe3.TextColor3 = Color3.fromRGB(255, 100, 150)
     lineframe3.TextSize = 12.000
-    
-    
-    local lineframe4 = Instance.new("TextLabel")
-
-    lineframe4.Parent = lineframe
-    lineframe4.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    lineframe4.BackgroundTransparency = 1
-    lineframe4.AnchorPoint = Vector2.new(0.5, 0.5)
-    lineframe4.Position = UDim2.new(0.5, 0, 0.5, 0)
-    lineframe4.BorderSizePixel = 0
-    lineframe4.Size = UDim2.new(0, 155, 0, 13)
-    lineframe4.Font = Enum.Font.GothamSemibold
-    lineframe4.Text = tostring(text)
-    lineframe4.TextColor3 = Color3.fromRGB(255, 255, 255)
-    lineframe4.TextSize = 12.000
-    lineframe4.BackgroundTransparency = 1
 end
 
-function ems : Label(text)
+function ems:Label(text)
 
     local labelfuc = {}
     local  Labelxd = Instance.new("TextLabel")
-
+                  
     Labelxd.Parent = ScolPage2
     Labelxd.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Labelxd.BackgroundTransparency = 1
@@ -1286,162 +1520,16 @@ function ems : Label(text)
     Labelxd.TextColor3 = Color3.fromRGB(255, 255, 255)
     Labelxd.TextSize = 12.000
 
-    function  labelfuc : Change(text2)
+    function  labelfuc:Change(text2)
         Labelxd.Text = tostring(text2)
     end
     return  labelfuc
 end
 
-
-return ems
+    return ems 
 end
-return page
+    return page
 end
-return tap
+    return tap
 end
-
-local doc = create:Win()
-
-local Home = doc:addtap("Home")
-local Page1 = Home:addpage()
-local ems1 = Page1:addems()
-
-ems1:Line("Movement")
-
-ems1:Toggle("Infinity Jump", false, function(value)
-	if value then
-		LocalPlayer.Character.Humanoid.JumpPower = 0
-		LocalPlayer.Character.Humanoid:GetPropertyChangedSignal("JumpPower"):Connect(function()
-			if LocalPlayer.Character.Humanoid.JumpPower ~= 0 then
-				LocalPlayer.Character.Humanoid.JumpPower = 0
-			end
-		end)
-	else
-		LocalPlayer.Character.Humanoid.JumpPower = 50
-	end
-end)
-
-local flytoggle = false
-local FlyBindable = Instance.new("BindableFunction")
-
-ems1:Toggle("Fly", false, function(value)
-    flytoggle = value
-    FlyBindable:Invoke(value)
-end)
-
-FlyBindable.OnInvoke = function(value)
-    if value then
-        LocalPlayer.Character.Humanoid.PlatformStand = true
-        LocalPlayer.Character.Humanoid.WalkSpeed = 0
-        LocalPlayer.Character.Humanoid.JumpPower = 0
-        LocalPlayer.Character.HumanoidRootPart.Anchored = true
-    else
-        LocalPlayer.Character.Humanoid.PlatformStand = false
-        LocalPlayer.Character.Humanoid.WalkSpeed = 16
-        LocalPlayer.Character.Humanoid.JumpPower = 50
-        LocalPlayer.Character.HumanoidRootPart.Anchored = false
-    end
-end
-
-RunService.RenderStepped:Connect(function()
-    if flytoggle and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local HRP = LocalPlayer.Character.HumanoidRootPart
-        local camCF = game.Workspace.CurrentCamera.CFrame
-        local moveVector = Vector3.new(0, 0, 0)
-
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveVector = moveVector + camCF.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveVector = moveVector - camCF.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveVector = moveVector + camCF.RightVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveVector = moveVector - camCF.RightVector
-        end
-
-        HRP.CFrame = HRP.CFrame + Vector3.new(moveVector.X, 0, moveVector.Z) * 0.5
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            HRP.CFrame = HRP.CFrame + Vector3.new(0, 0.5, 0)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-            HRP.CFrame = HRP.CFrame - Vector3.new(0, 0.5, 0)
-        end
-    end
-end)
-
-
-ems1:Line("Local Player")
-
-ems1:Slider("WalkSpeed", 16, 100, 16, function(value)
-	LocalPlayer.Character.Humanoid.WalkSpeed = value
-end)
-
-ems1:Slider("JumpPower", 50, 100, 50, function(value)
-	LocalPlayer.Character.Humanoid.JumpPower = value
-end)
-
-local TeleportTab = doc:addtap("Teleport")
-local Page2 = TeleportTab:addpage()
-local ems2 = Page2:addems()
-
-ems2:Line("Aimbot")
-
-local aimbotEnabled = false
-
-ems2:Toggle("Aimbot", false, function(value)
-    aimbotEnabled = value
-end)
-
-ems2:Button("Kill All", function()
-    for _, player in pairs(game.Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local HRP = player.Character.HumanoidRootPart
-            if HRP then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = HRP.CFrame * CFrame.new(0, 0, 10)
-                wait(0.1)
-                LocalPlayer.Character.HumanoidRootPart.CFrame = HRP.CFrame * CFrame.new(0, 0, 10)
-            end
-        end
-    end
-end)
-
--- Aimbot Logic (simplistic example)
-RunService.Stepped:Connect(function()
-    if aimbotEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local closestTarget = nil
-        local minDistance = math.huge
-
-        for _, player in pairs(game.Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local targetHRP = player.Character.HumanoidRootPart
-                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - targetHRP.Position).Magnitude
-
-                if distance < minDistance and distance < 50 then -- Rango de aimbot (ej. 50 studs)
-                    minDistance = distance
-                    closestTarget = targetHRP
-                end
-            end
-        end
-
-        if closestTarget then
-            local targetPosition = closestTarget.Position
-            local head = closestTarget.Parent:FindFirstChild("Head")
-            if head then
-                targetPosition = head.Position
-            end
-
-            -- Calcular la dirección hacia el objetivo
-            local direction = (targetPosition - LocalPlayer.Character.HumanoidRootPart.Position).Unit
-            
-            -- Calcular la CFrame para apuntar
-            local lookAt = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPosition)
-            
-            -- Aplicar la rotación (sólo en Y) a la cámara y al personaje si es necesario
-            game.Workspace.CurrentCamera.CFrame = lookAt
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position) * CFrame.Angles(0, lookAt:ToOrientation(), 0)
-        end
-    end
-end)
+return create
