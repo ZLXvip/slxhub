@@ -1,7 +1,7 @@
 --[[ 
-    S l x HUB V133.0 (SLXHUB - GAME LOCK)
-    BASE: Funcional V132.0.
-    FIX: Añadido bloqueo para que el script SOLO se ejecute en el Place ID: 17209126270.
+    KLAUS HUB V140.0 (SLXHUB - FOV SLIDER)
+    BASE: Funcional V133.0 (Stable / Game Lock).
+    NUEVO: Añadido un control deslizante de FOV (Field of View) en la pestaña Render.
 ]]--
 
 -- =======================================
@@ -11,7 +11,6 @@ local TARGET_PLACE_ID = 17209126270 -- Rancheria, Nuevo León
 local CurrentPlaceID = game.PlaceId
 
 if CurrentPlaceID ~= TARGET_PLACE_ID then
-    -- Si no estamos en el juego correcto, avisamos y salimos.
     warn(">>> KLAUS HUB ERROR: Este script está diseñado SOLO para Place ID: " .. TARGET_PLACE_ID .. " (Actual: " .. CurrentPlaceID .. "). Deteniendo ejecución.")
     return 
 end
@@ -21,7 +20,7 @@ end
 -- ---------------------------------------
 -- CONFIGURACIÓN INICIAL Y LIBRERÍA (SLXHUB)
 -- ---------------------------------------
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ZLXvip/slxhub/refs/heads/main/ZhubV1"))()
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ZLXvip/slxHub/refs/heads/main/slxHub%20V1"))()
 local window = library:Win()
 
 -- =======================================
@@ -60,6 +59,7 @@ local Settings = {
     Fantasma = { Enabled = false },
     Hitbox = { Enabled = false, Size = 5 }, 
     ESP = { Enabled = false, RGB = false, DrawDistance = 500 }, 
+    Camera = { FOV = 70 }, -- Valor por defecto del FOV de Roblox
 }
 
 -- Servisler (Services)
@@ -107,7 +107,7 @@ LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter() 
 
 -- ---------------------------------------
--- FUNCIONES CENTRALES (V126/V132 Base) 
+-- FUNCIONES CENTRALES (BASE V133) 
 -- ---------------------------------------
 
 local function isWallHiding(targetPos)
@@ -205,7 +205,7 @@ local function toggleHitbox(Value)
 end
 
 -- ---------------------------------------
--- CONSTRUCCIÓN DE LA GUI (SLXHUB - REESTRUCTURA V131)
+-- CONSTRUCCIÓN DE LA GUI (SLXHUB)
 -- ---------------------------------------
 
 -- COMBAT TAB
@@ -232,13 +232,19 @@ HitboxPage:Slder("Hitbox Boyutu", 1, 10000, Settings.Hitbox.Size, function(value
 ConfigPage:Ti("⚙️ Utilidad")
 ConfigPage:Button("Alternar Hub (Tecla INSERT)", function() end) 
 
--- RENDER TAB (SOLO ESP)
+-- RENDER TAB
 local VisualsPage = RenderTab:addpage() 
-RenderTab:addpage()
+local CameraPage = RenderTab:addpage() -- Nueva página para FOV/Cámara
 
 VisualsPage:Ti("👁️ Name ESP Simple")
 VisualsPage:Toggle("Name ESP Aktif", Settings.ESP.Enabled, function(value) Settings.ESP.Enabled = value end)
 VisualsPage:Toggle("RGB ESP Aktif", Settings.ESP.RGB, function(value) Settings.ESP.RGB = value end) 
+
+CameraPage:Ti("🎥 Camera & Visuals")
+CameraPage:Slder("FOV Selección", 1, 120, Settings.Camera.FOV, function(value) 
+    Settings.Camera.FOV = value 
+    if Camera then Camera.FieldOfView = value end
+end)
 
 
 -- MOVENT TAB (SOLO NOCLIP)
@@ -255,6 +261,11 @@ UtilityPage:Toggle("Fantasma (NoClip Crudo)", Settings.Fantasma.Enabled, functio
 -- ---------------------------------------
 RunService.RenderStepped:Connect(function()
     
+    -- Aplicar FOV en cada frame (Asegura que no lo cambie el juego)
+    if Camera and Camera.FieldOfView ~= Settings.Camera.FOV then
+        Camera.FieldOfView = Settings.Camera.FOV
+    end
+
     -- FOV CIRCLE VISUAL
     if Settings.Aimbot.Enabled then
         if not FOVCircle then 
@@ -300,8 +311,8 @@ RunService.RenderStepped:Connect(function()
     pcall(function()
         if not Settings.ESP.Enabled then 
              for _, espName in pairs(ESPObjects) do 
-                if espName then espName.Visible = false end
-            end
+                 if espName then espName.Visible = false end
+             end
             return 
         end
         
@@ -356,4 +367,4 @@ RunService.Stepped:Connect(function()
 end)
 
 
-print(">>> KLAUS HUB V133 (SLXHUB - GAME LOCKED) CARGADO. ¡Solo funciona en Rancheria! <<<")
+print(">>> KLAUS HUB V140 (SLXHUB - FOV SLIDER) CARGADO. ¡El campo de visión se puede ajustar en Render! <<<")
