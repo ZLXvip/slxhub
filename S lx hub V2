@@ -21,7 +21,7 @@ end
 -- ---------------------------------------
 -- CONFIGURACIÓN INICIAL Y LIBRERÍA (SLXHUB)
 -- ---------------------------------------
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ZLXvip/slxHub/refs/heads/main/slxHub%20V1"))()
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ZLXvip/slxhub/refs/heads/main/ZhubV1"))()
 local window = library:Win()
 
 -- =======================================
