@@ -1,7 +1,7 @@
 --[[ 
-    KLAUS HUB V140.0 (SLXHUB - FOV SLIDER)
-    BASE: Funcional V133.0 (Stable / Game Lock).
-    NUEVO: Añadido un control deslizante de FOV (Field of View) en la pestaña Render.
+    KLAUS HUB V251.0 (SLXHUB - Speed Rango 1-1000)
+    BASE: V250.0 
+    CAMBIO: El slider de velocidad en Movent ahora va de 1 a 1000.
 ]]--
 
 -- =======================================
@@ -23,10 +23,17 @@ end
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ZLXvip/slxhub/refs/heads/main/ZhubV1"))()
 local window = library:Win()
 
+-- Servisler (Services)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace:FindFirstChildOfClass("Camera") or workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local noclipConnection = nil 
+
 -- =======================================
 -- LÓGICA DE OCULTAR/MOSTRAR (INSERT Key)
 -- =======================================
-local UserInputService = game:GetService("UserInputService")
 local isHidden = false 
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -57,17 +64,10 @@ local Settings = {
     },
     TPKill = { Enabled = false },
     Fantasma = { Enabled = false },
-    Hitbox = { Enabled = false, Size = 5 }, 
+    Speed = { Value = 16 }, -- Valor de velocidad (16 es el default de Roblox)
     ESP = { Enabled = false, RGB = false, DrawDistance = 500 }, 
-    Camera = { FOV = 70 }, -- Valor por defecto del FOV de Roblox
+    Camera = { FOV = 70 }, 
 }
-
--- Servisler (Services)
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Camera = workspace:FindFirstChildOfClass("Camera") or workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
-local noclipConnection = nil 
 
 -- VARIABLES GLOBALES
 local ESPObjects = {} 
@@ -101,15 +101,19 @@ local function setupCharacter()
     Humanoid = Character:FindFirstChild("Humanoid")
     HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
     
+    -- Aplicar velocidad inicial (o restaurar)
+    if Humanoid then
+        Humanoid.WalkSpeed = Settings.Speed.Value
+    end
+    
     createFOVCircle() 
 end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter() 
 
 -- ---------------------------------------
--- FUNCIONES CENTRALES (BASE V133) 
+-- FUNCIONES CENTRALES
 -- ---------------------------------------
-
 local function isWallHiding(targetPos)
     if not Camera or not LocalPlayer.Character then return false end
     local origin = Camera.CFrame.p 
@@ -123,38 +127,23 @@ local function isWallHiding(targetPos)
     end
     return false 
 end
-
 local function getClosestPlayerForAimbot()
-    local closestPlayer = nil; 
-    local shortestDistance = Settings.Aimbot.FOV
-    
+    local closestPlayer = nil; local shortestDistance = Settings.Aimbot.FOV
     for _, player in pairs(Players:GetPlayers()) do
         local char = player.Character; local head = char and char:FindFirstChild("Head"); local hum = char and char:FindFirstChild("Humanoid")
-        
         if player ~= LocalPlayer and head and hum and hum.Health > 0 and HumanoidRootPart then
             if Settings.Aimbot.TeamCheck and player.Team == LocalPlayer.Team then continue end
-            
             local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
             if not onScreen then continue end
-            
             local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
             local distance = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-            
             if distance > Settings.Aimbot.FOV then continue end
-
-            if Settings.Aimbot.WallCheck and isWallHiding(head.Position) then
-                continue 
-            end
-            
-            if distance < shortestDistance then 
-                closestPlayer = player
-                shortestDistance = distance 
-            end
+            if Settings.Aimbot.WallCheck and isWallHiding(head.Position) then continue end
+            if distance < shortestDistance then closestPlayer = player; shortestDistance = distance end
         end
     end
     return closestPlayer
 end
-
 local function getClosestPlayerForTP()
     local closestPlayer = nil; local shortestDistance = math.huge 
     for _, player in pairs(Players:GetPlayers()) do
@@ -167,7 +156,6 @@ local function getClosestPlayerForTP()
     end
     return closestPlayer
 end
-
 local function toggleGhostMode(active)
     Settings.Fantasma.Enabled = active
     local safeCharacter = LocalPlayer.Character 
@@ -193,17 +181,6 @@ local function toggleGhostMode(active)
     end
 end
 
-local function toggleHitbox(Value)
-    Settings.Hitbox.Enabled = Value
-    if not Value then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player.Character and player.Character:FindFirstChild("Humanoid") then
-                pcall(function() player.Character.Humanoid:BuildRigFromAttachments() end)
-            end
-        end
-    end
-end
-
 -- ---------------------------------------
 -- CONSTRUCCIÓN DE LA GUI (SLXHUB)
 -- ---------------------------------------
@@ -211,7 +188,6 @@ end
 -- COMBAT TAB
 local AimbotPage = CombatTab:addpage()
 local TPKillPage = CombatTab:addpage()
-local HitboxPage = CombatTab:addpage()
 local ConfigPage = CombatTab:addpage() 
 
 AimbotPage:Ti("🔫 Aimbot Controls")
@@ -225,16 +201,12 @@ AimbotPage:Slder("Smoothing Factor", 1, 50, Settings.Aimbot.SmoothingFactor, fun
 TPKillPage:Ti("🔪 TP Kill")
 TPKillPage:Toggle("TP Kill Aktif", Settings.TPKill.Enabled, function(value) Settings.TPKill.Enabled = value end)
 
-HitboxPage:Ti("📦 Hitbox Adjustment")
-HitboxPage:Toggle("Hitbox Aktif", Settings.Hitbox.Enabled, function(value) toggleHitbox(value) end)
-HitboxPage:Slder("Hitbox Boyutu", 1, 10000, Settings.Hitbox.Size, function(value) Settings.Hitbox.Size = value end)
-
 ConfigPage:Ti("⚙️ Utilidad")
 ConfigPage:Button("Alternar Hub (Tecla INSERT)", function() end) 
 
 -- RENDER TAB
 local VisualsPage = RenderTab:addpage() 
-local CameraPage = RenderTab:addpage() -- Nueva página para FOV/Cámara
+local CameraPage = RenderTab:addpage()
 
 VisualsPage:Ti("👁️ Name ESP Simple")
 VisualsPage:Toggle("Name ESP Aktif", Settings.ESP.Enabled, function(value) Settings.ESP.Enabled = value end)
@@ -247,12 +219,20 @@ CameraPage:Slder("FOV Selección", 1, 120, Settings.Camera.FOV, function(value)
 end)
 
 
--- MOVENT TAB (SOLO NOCLIP)
+-- MOVENT TAB
 local UtilityPage = MoventTab:addpage() 
 MoventTab:addpage()
 MoventTab:addpage()
 
 UtilityPage:Ti("🏃 Movement/Noclip")
+-- SLIDER DE SPEED - Rango cambiado a 1 a 1000
+UtilityPage:Slder("🏃 Speed (Velocidad)", 1, 1000, Settings.Speed.Value, function(value)
+    Settings.Speed.Value = value
+    if Humanoid then
+        Humanoid.WalkSpeed = value
+    end
+end)
+
 UtilityPage:Toggle("Fantasma (NoClip Crudo)", Settings.Fantasma.Enabled, function(value) toggleGhostMode(value) end)
 
 
@@ -266,11 +246,14 @@ RunService.RenderStepped:Connect(function()
         Camera.FieldOfView = Settings.Camera.FOV
     end
 
+    -- Aplicar Speed en cada frame (Asegura que no lo cambie el juego)
+    if Humanoid and Humanoid.WalkSpeed ~= Settings.Speed.Value then
+        Humanoid.WalkSpeed = Settings.Speed.Value
+    end
+
     -- FOV CIRCLE VISUAL
     if Settings.Aimbot.Enabled then
-        if not FOVCircle then 
-            createFOVCircle()
-        end
+        if not FOVCircle then createFOVCircle() end
         if FOVCircle then
             FOVCircle.Color = Settings.Aimbot.FOV_RGB and updateRGBColor(0) or Settings.Aimbot.FOVColor 
             FOVCircle.Radius = Settings.Aimbot.FOV
@@ -278,12 +261,10 @@ RunService.RenderStepped:Connect(function()
             FOVCircle.Visible = true
         end
     else
-        if FOVCircle then
-             FOVCircle.Visible = false
-        end
+        if FOVCircle then FOVCircle.Visible = false end
     end
 
-    -- 1. TP KILL / AIMBOT 
+    -- 1. TP KILL / AIMBOT
     if (Settings.Aimbot.Enabled or Settings.TPKill.Enabled) and HumanoidRootPart and Camera then
         local target = Settings.TPKill.Enabled and getClosestPlayerForTP() or getClosestPlayerForAimbot()
         
@@ -292,22 +273,19 @@ RunService.RenderStepped:Connect(function()
             
             if Settings.TPKill.Enabled then
                 local hrp = target.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then 
-                    HumanoidRootPart.CFrame = hrp.CFrame * CFrame.new(0, 5, 0)
-                end
+                if hrp then HumanoidRootPart.CFrame = hrp.CFrame * CFrame.new(0, 5, 0) end
             end
             
             if Settings.Aimbot.Enabled then
                 local currentCFrame = Camera.CFrame
                 local desiredCFrame = CFrame.new(currentCFrame.p, targetPart.Position)
-                
                 local smoothingFactor = Settings.Aimbot.SmoothingFactor
                 Camera.CFrame = currentCFrame:lerp(desiredCFrame, 1 / smoothingFactor)
             end
         end
     end
     
-    -- 3. SIMPLE NAME ESP 
+    -- 3. SIMPLE NAME ESP
     pcall(function()
         if not Settings.ESP.Enabled then 
              for _, espName in pairs(ESPObjects) do 
@@ -353,18 +331,4 @@ RunService.RenderStepped:Connect(function()
     
 end)
 
--- Stepped: Hitbox Forzado
-RunService.Stepped:Connect(function()
-    if Settings.Hitbox.Enabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player.Character then
-                if player ~= LocalPlayer then
-                    -- Lógica de expandHitbox (omito definición por simplicidad, se asume presente)
-                end
-            end
-        end
-    end
-end)
-
-
-print(">>> KLAUS HUB V140 (SLXHUB - FOV SLIDER) CARGADO. ¡El campo de visión se puede ajustar en Render! <<<")
+print(">>> KLAUS HUB V251.0 (SLXHUB - SPEED RANGO 1-1000) CARGADO. ¡Máxima velocidad disponible! <<<")
