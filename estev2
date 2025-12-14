@@ -1,0 +1,393 @@
+-- SLX HUB Exploit Edition (NATIVE UI FIX v5.5 - Transparencia Forzada 0.5 y Fix Absoluto)
+-- Core Modules: Native UI, Noclip, Speed Hack, ESP Tags, Hitbox (T=0.5, CFrame Anclado), AntiCheat Monitor.
+
+-- ==============================================================================
+-- 1. ESTRUCTURA DE DATOS DE ESTADO Y SERVICIOS
+-- ==============================================================================
+
+local State = {
+    Noclip = false, 
+    ESPOn = false, 
+    HitboxScale = 3,          
+    Speed = 16,               
+    ESPTags = {}, 
+    Input = {},               
+    AntiCheatMonitor = false, 
+    HitboxEnabled = true, 
+}
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local CoreGui = game:GetService("CoreGui")
+
+local function getCharacter(pl) return pl.Character or pl.CharacterAdded:Wait() end
+local function getHRP(char) return char and char:FindFirstChild("HumanoidRootPart") end
+
+-- ==============================================================================
+-- 2. MÓDULO DE INTERFAZ DE USUARIO NATIVA (NATIVE UI BUILD & CONTROL)
+-- ==============================================================================
+
+local WINDOW_WIDTH = 250
+local FULL_HEIGHT = 310 
+local MINIMIZED_HEIGHT = 30
+
+local UI = Instance.new("ScreenGui")
+UI.Name = "NativeSlxHub"
+UI.Parent = CoreGui
+UI.ZIndexBehavior = Enum.ZIndexBehavior.Global
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, WINDOW_WIDTH, 0, FULL_HEIGHT)
+MainFrame.Position = UDim2.new(0.5, -WINDOW_WIDTH / 2, 0.5, -FULL_HEIGHT / 2 + 30)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 1
+MainFrame.Parent = UI
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, MINIMIZED_HEIGHT) 
+Title.Text = "⚡ S l x Hub" 
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSans
+Title.BackgroundTransparency = 0.9
+Title.TextSize = 18
+Title.Parent = MainFrame
+
+local ControlsFrame = Instance.new("Frame")
+ControlsFrame.Size = UDim2.new(1, 0, 1, -MINIMIZED_HEIGHT)
+ControlsFrame.Position = UDim2.new(0, 0, 0, MINIMIZED_HEIGHT)
+ControlsFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+ControlsFrame.BorderSizePixel = 0
+ControlsFrame.Parent = MainFrame
+
+local Layout = Instance.new("UIListLayout")
+Layout.Padding = UDim.new(0, 5)
+Layout.FillDirection = Enum.FillDirection.Vertical
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Layout.Parent = ControlsFrame
+
+-- === 2.1 MÓDULO DE MINIMIZACIÓN/COLAPSADO ===
+
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 30, 0, MINIMIZED_HEIGHT)
+MinimizeButton.Position = UDim2.new(1, -30, 0, 0)
+MinimizeButton.Text = "—" 
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MinimizeButton.Font = Enum.Font.SourceSans
+MinimizeButton.TextSize = 20
+MinimizeButton.Parent = Title
+
+local isMinimized = false
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    if isMinimized then
+        MainFrame:TweenSize(UDim2.new(0, WINDOW_WIDTH, 0, FULL_HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        ControlsFrame.Visible = true
+        MinimizeButton.Text = "—"
+        isMinimized = false
+    else
+        ControlsFrame.Visible = false
+        MainFrame:TweenSize(UDim2.new(0, WINDOW_WIDTH, 0, MINIMIZED_HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        MinimizeButton.Text = "☐" 
+        isMinimized = true
+    end
+end)
+
+-- === 2.2 MÓDULO DE MOVILIDAD (DRAGGING) ===
+
+local isDragging = false
+local dragStartPos = Vector2.zero
+local dragStartFramePos = UDim2.new()
+
+Title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDragging = true
+        dragStartPos = input.Position
+        dragStartFramePos = MainFrame.Position
+        input.Handled = true
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStartPos
+        local newX = dragStartFramePos.X.Offset + delta.X
+        local newY = dragStartFramePos.Y.Offset + delta.Y
+        
+        MainFrame.Position = UDim2.new(0, newX, 0, newY)
+        input.Handled = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDragging = false
+    end
+end)
+
+-- === 2.3 FUNCIONES DE WIDGETS ===
+
+local function createToggle(name, stateVariable)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0.9, 0, 0, 30)
+    button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Text = name .. ": [OFF]"
+    button.Font = Enum.Font.SourceSans
+    button.TextSize = 16
+    button.Parent = ControlsFrame
+
+    local function updateText(value)
+        button.Text = name .. ": [" .. (value and "ON" or "OFF") .. "]"
+        button.BackgroundColor3 = value and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+    end
+    
+    updateText(State[stateVariable])
+
+    button.MouseButton1Click:Connect(function()
+        State[stateVariable] = not State[stateVariable]
+        updateText(State[stateVariable])
+    end)
+end
+
+local function createSlider(name, stateVariable, minVal, maxVal, step)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.9, 0, 0, 40)
+    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    frame.Parent = ControlsFrame
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.Position = UDim2.new(0.05, 0, 0, 0)
+    label.Text = name .. ": " .. math.floor(State[stateVariable])
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.SourceSans
+    label.TextSize = 16
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    local function updateValue(value)
+        State[stateVariable] = math.clamp(value, minVal, maxVal)
+        label.Text = name .. ": " .. string.format("%.1f", State[stateVariable])
+    end
+
+    local function createArrowButton(text, xPos, action)
+        local arrow = Instance.new("TextButton")
+        arrow.Size = UDim2.new(0.15, 0, 0.8, 0)
+        arrow.Position = UDim2.new(xPos, 0, 0.1, 0)
+        arrow.Text = text
+        arrow.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        arrow.TextColor3 = Color3.fromRGB(255, 255, 255)
+        arrow.Parent = frame
+        arrow.TextSize = 18
+        
+        arrow.MouseButton1Click:Connect(action)
+    end
+
+    createArrowButton("-", 0.7, function() updateValue(State[stateVariable] - step) end)
+    createArrowButton("+", 0.85, function() updateValue(State[stateVariable] + step) end)
+end
+
+-- === 2.4 ADICIÓN DE CONTROLES NATIVOS ===
+
+createToggle("Noclip", "Noclip")
+createToggle("ESP Tags", "ESPOn")
+createToggle("AntiCheat Monitor", "AntiCheatMonitor")
+
+createSlider("Speed", "Speed", 1, 100, 0.5)
+createSlider("Hitbox Scale", "HitboxScale", 1, 100, 0.5) 
+
+-- ==============================================================================
+-- 3. MÓDULO DE JUEGO PRINCIPAL (LOGIC CORE)
+-- ==============================================================================
+
+-- === 3.1 LÓGICA DE MOVILIDAD (Speed + Noclip) ===
+
+RunService.RenderStepped:Connect(function()
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = State.Speed end
+
+    -- Noclip
+    if State.Noclip then
+        local char = LocalPlayer.Character
+        if char then
+            for _,part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide=false end
+            end
+        end
+    end
+end)
+
+-- === 3.2 LÓGICA DE ESP Tags (Manteniendo la funcionalidad original) ===
+local function createNameTag(pl)
+    local char = pl.Character or pl.CharacterAdded:Wait()
+    local head = char and char:FindFirstChild("Head")
+    if not head then return end
+    if State.ESPTags[pl] then State.ESPTags[pl]:Destroy() end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.fromOffset(120,30)
+    billboard.StudsOffset = Vector3.new(0,2,0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = head
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1,0,1,0)
+    label.BackgroundTransparency = 0.5
+    label.Text = pl.Name
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255,255,255)
+    label.Parent = billboard
+    
+    State.ESPTags[pl] = billboard
+end
+
+RunService.RenderStepped:Connect(function()
+    if State.ESPOn then
+        for _,pl in ipairs(Players:GetPlayers()) do
+            if pl ~= LocalPlayer and not State.ESPTags[pl] then
+                createNameTag(pl)
+            end
+        end
+    else
+        for _,gui in pairs(State.ESPTags) do gui:Destroy() end
+        State.ESPTags = {}
+    end
+end)
+
+-- ==============================================================================
+-- 3.3 MÓDULO OPTIMIZADO: Hitbox Compuesto (Estabilización Absoluta y T=0.5 Forzado)
+-- ==============================================================================
+
+local function updateHitboxes()
+    local scale = State.HitboxScale
+    local isHitboxEnabled = State.HitboxEnabled
+    local transparencyValue = 0.5 -- VALOR SOLICITADO: SEMIVISIBLE
+
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl ~= LocalPlayer and pl.Character then
+            local char = pl.Character
+            local head = char:FindFirstChild("Head") 
+
+            if head then
+                local HitboxExtender = head:FindFirstChild("HitboxExtender")
+                
+                if isHitboxEnabled then
+                    
+                    -- **FASE 1: MODIFICACIÓN DE LA HEAD BASE**
+                    head.Size = Vector3.new(scale, scale, scale)
+                    head.Massless = true
+                    head.CanCollide = false
+                    head.Anchored = false 
+                    
+                    -- APLICACIÓN FORZADA DE T=0.5 A LA HEAD Y SUS COMPONENTES
+                    local partsToAdjust = {head}
+                    
+                    -- Recolectar accesorios
+                    for _,acc in ipairs(char:GetChildren()) do
+                        if acc:IsA("Accessory") and acc:FindFirstChild("Handle") then
+                            table.insert(partsToAdjust, acc.Handle)
+                        end
+                    end
+
+                    -- Aplicar T=0.5 de forma exhaustiva
+                    for _, basePart in ipairs(partsToAdjust) do
+                        if basePart:IsA("BasePart") then
+                             basePart.Transparency = transparencyValue
+                        end
+                        -- Iteración recursiva para sub-partes visuales (Decals, Meshes, etc.)
+                        for _, descendant in ipairs(basePart:GetDescendants()) do
+                            if descendant:IsA("BasePart") or descendant:IsA("Decal") or descendant:IsA("SpecialMesh") then
+                                 descendant.Transparency = transparencyValue
+                            end
+                        end
+                    end
+                    
+                    -- **FASE 2: CREACIÓN Y POSICIONAMIENTO ABSOLUTO DEL EXTENDER**
+                    if not HitboxExtender then
+                        HitboxExtender = Instance.new("Part")
+                        HitboxExtender.Name = "HitboxExtender"
+                        HitboxExtender.Shape = Enum.PartType.Cylinder 
+                        HitboxExtender.CanCollide = false
+                        HitboxExtender.CanTouch = true
+                        HitboxExtender.Massless = true
+                        HitboxExtender.Parent = head 
+                        
+                        -- FIX DE ESTABILIZACIÓN ABSOLUTA: Anclamos el Extender
+                        HitboxExtender.Anchored = true 
+                    end
+
+                    local extenderHeight = scale * 1.5 
+                    local extenderRadius = scale / 1.5 
+                    
+                    HitboxExtender.Size = Vector3.new(extenderRadius, extenderHeight, extenderRadius)
+                    
+                    -- FIX ABSOLUTO: Forzar el CFrame del Extender en cada frame para seguir la Head
+                    local offsetCFrame = CFrame.new(0, (head.Size.Y / 2) + (extenderHeight / 2), 0)
+                    HitboxExtender.CFrame = head.CFrame * offsetCFrame 
+                    
+                    HitboxExtender.Transparency = transparencyValue -- Aplicado T=0.5
+                else
+                    -- Restauración de Propiedades (Desactivación)
+                    head.Size = Vector3.new(2,1,1)
+                    head.Massless = false
+                    head.CanCollide = true
+                    head.CustomPhysicalProperties = PhysicalProperties.new(1,0.3,0.5,1,1)
+                    head.Transparency = 0
+                    head.Anchored = false
+                    
+                    for _, part in ipairs(head:GetDescendants()) do
+                        if part:IsA("BasePart") or part:IsA("Decal") or part:IsA("SpecialMesh") then
+                             part.Transparency = 0
+                        end
+                    end
+
+                    for _,acc in ipairs(char:GetChildren()) do
+                        if acc:IsA("Accessory") and acc:FindFirstChild("Handle") then
+                            acc.Handle.Transparency = 0
+                        end
+                    end
+                    if HitboxExtender then HitboxExtender:Destroy() end
+                end
+            end
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(updateHitboxes)
+
+-- === 3.4 MÓDULO DE ANTICHEAT MONITOR ===
+RunService.Heartbeat:Connect(function()
+    if not State.AntiCheatMonitor then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local head = char:FindFirstChild("Head")
+
+    if hum then
+        if hum.WalkSpeed > 20 then 
+            warn("⚠️ AntiCheat detecta WalkSpeed alto: "..hum.WalkSpeed)
+        end
+        if hum.JumpPower > 50 then
+            warn("⚠️ AntiCheat detecta JumpPower alto: "..hum.JumpPower)
+        end
+    end
+
+    if head then
+        local s = head.Size
+        if s.X > 10 or s.Y > 10 or s.Z > 10 then
+            warn("⚠️ AntiCheat detecta HeadSize alterado: "..tostring(s))
+        end
+    end
+
+    for _,part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") and not part.CanCollide and not State.Noclip then
+            warn("⚠️ AntiCheat detecta Noclip en "..part.Name)
+        end
+    end
+end)
