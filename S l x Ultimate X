@@ -380,13 +380,13 @@ local function ExecuteKill()
     local originalParent = gun.Parent
     if originalParent ~= char then 
         char.Humanoid:EquipTool(gun)
-        task.wait(0.08) -- Tiempo para que el server registre que la sacaste
+        task.wait(0.05) -- Tiempo para que el server registre que la sacaste
     end
 
     -- CÁLCULO DE PREDICCIÓN
     local rawPing = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
     local pingValue = tonumber(rawPing) or 50
-    local Prediction = (pingValue / 4000) + 0.175 
+    local Prediction = (pingValue / 2500) + 0.18 
     local TargetPos = target.Position + (target.AssemblyLinearVelocity * Prediction)
     
     -- WALLBANG (Nace arriba del murder)
@@ -399,7 +399,7 @@ local function ExecuteKill()
         
         -- Si usas el Shoot V2, la guarda rápido para que no te vean el arma
         if V2_Active then
-            task.wait(0.02)
+            task.wait(0.05)
             gun.Parent = backpack 
         end
     end
