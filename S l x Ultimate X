@@ -390,7 +390,7 @@ local function ExecuteKill()
     local TargetPos = target.Position + (target.AssemblyLinearVelocity * Prediction)
     
     -- WALLBANG (Nace arriba del murder)
-    local MagicOrigin = TargetPos + Vector3.new(0, 3.5, 0) 
+    local MagicOrigin = TargetPos + Vector3.new(0, 0.6, 0) 
     local args = { CFrame.new(MagicOrigin), CFrame.new(TargetPos) }
     
     -- DISPARO Y GUARDADO RÁPIDO
