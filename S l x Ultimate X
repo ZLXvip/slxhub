@@ -386,7 +386,7 @@ local function ExecuteKill()
     -- CÁLCULO DE PREDICCIÓN
     local rawPing = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
     local pingValue = tonumber(rawPing) or 50
-    local Prediction = (pingValue / 2500) + 0.570 
+    local Prediction = (pingValue / 2500) + 0.175 
     local TargetPos = target.Position + (target.AssemblyLinearVelocity * Prediction)
     
     -- WALLBANG (Nace arriba del murder)
