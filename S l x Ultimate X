@@ -1,0 +1,1169 @@
+--[[
+    SISTEMA: SLX-HUB UI FRAMEWORK (V57 - TRACER UPDATE)
+    NUEVO: ESP Tracers (Líneas desde tu Torso).
+    COLORES: Rojo (Murder), Azul (Sheriff), Verde (Inocente).
+    VISUAL: Coins 2D + Gun 2D + Skeleton + Box.
+]]
+
+--// 1. SERVICIOS DEL MOTOR //--
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+local Debris = game:GetService("Debris") 
+local Stats = game:GetService("Stats")
+local Workspace = game:GetService("Workspace")
+
+--// 2. VARIABLES DE ENTORNO //--
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local ParentTarget = LocalPlayer:WaitForChild("PlayerGui")
+
+getgenv().AutoTP_Active = false -- Empieza apagado por seguridad
+
+--// Hooks For  PC/movil
+local success, err = pcall(function()
+    local mt = getrawmetatable(game)
+    setreadonly(mt, false)
+    local oldIndex = mt.__index
+
+    mt.__index = newcclosure(function(self, idx)
+        if self == Mouse and (idx == "Hit" or idx == "Target") and getgenv().V1_Active and getgenv().CurrentTarget then
+            if idx == "Hit" then return getgenv().CurrentTarget.CFrame end
+            if idx == "Target" then return getgenv().CurrentTarget.Parent end
+        end
+        return oldIndex(self, idx)
+    end)
+end)
+
+if not success then
+    warn("Tu ejecutor no soporta Silent Aim (Metatables). El resto del script seguirá cargando.")
+end
+
+--// 3. SISTEMA "OJO DE DIOS" (AIMBOT RADAR) //--
+getgenv().V1_Active = false 
+getgenv().CurrentTarget = nil 
+
+local V2_Active = false 
+local Att0 = Instance.new("Attachment")
+local Att1 = Instance.new("Attachment")
+
+local function CreateBeam()
+    local beam = Instance.new("Beam")
+    beam.Name = "MurderTracker"
+    beam.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)) 
+    beam.FaceCamera = true
+    beam.Width0 = 0.1
+    beam.Width1 = 0.1
+    beam.Texture = "rbxassetid://446111271" 
+    beam.TextureSpeed = 2
+    beam.Transparency = NumberSequence.new(0.2)
+    return beam
+end
+
+local VisualBeam = CreateBeam()
+
+local function FindMurderer()
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local char = p.Character
+            local backpack = p.Backpack
+            if char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife")) then
+                return char
+            end
+            local tool = char:FindFirstChildOfClass("Tool") or (backpack and backpack:FindFirstChildOfClass("Tool"))
+            if tool then
+                local n = tool.Name:lower()
+                if n:find("knif") or n:find("cuch") then return char end
+            end
+        end
+    end
+    return nil
+end
+
+--// 4. SISTEMA ESP COMPLETO //--
+local ESP_Shadow_Active = false
+local ESP_2D_Active = false 
+local ESP_Skeleton_Active = false
+local ESP_Tracer_Active = false -- [NUEVO] Variable Tracer
+local ESP_Info_Active = false -- [NUEVO] Variable para Nombres
+local ESP_Gun_Active = false 
+local ESP_Coin_Active = false 
+local AutoFarm_Active = false -- [NUEVO] Variable para el Farm
+local AutoFarm_Speed = 20 -- [NUEVO] Velocidad inicial
+local AutoKill_Active = false -- [NUEVO] Variable para Auto Kill Murder
+local AutoTPGun_Active = false -- Variable para el modo automático
+
+-- CONTENEDOR VISUAL
+local SkeletonGUI = Instance.new("ScreenGui")
+SkeletonGUI.Name = "SLX_Skeletons"
+SkeletonGUI.Parent = ParentTarget
+SkeletonGUI.ResetOnSpawn = false
+SkeletonGUI.IgnoreGuiInset = true 
+SkeletonGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Función Maestra para dibujar líneas (Skeletons y Tracers)
+local function UpdateLine(frame, pointA, pointB, color, thickness)
+    local distance = (pointA - pointB).Magnitude
+    local center = (pointA + pointB) / 2
+    local rotation = math.atan2(pointB.Y - pointA.Y, pointB.X - pointA.X)
+    
+    frame.Position = UDim2.new(0, center.X, 0, center.Y)
+    frame.Rotation = math.deg(rotation)
+    frame.Size = UDim2.new(0, distance, 0, thickness or 1.5)
+    frame.BackgroundColor3 = color
+    frame.BorderSizePixel = 0
+    frame.Visible = true
+end
+
+local function GetPlayerRole(player)
+    if not player or not player.Character then return "Innocent" end
+    local char = player.Character
+    local backpack = player.Backpack
+    
+    local hasKnife = char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife"))
+    if not hasKnife then
+        for _, item in pairs(char:GetChildren()) do if item:IsA("Tool") and (item.Name:lower():find("knif") or item.Name:lower():find("cuch")) then hasKnife = true break end end
+        if not hasKnife and backpack then for _, item in pairs(backpack:GetChildren()) do if item:IsA("Tool") and (item.Name:lower():find("knif") or item.Name:lower():find("cuch")) then hasKnife = true break end end end
+    end
+    if hasKnife then return "Murderer" end
+
+    local hasGun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Revolver")
+    if not hasGun then
+        for _, item in pairs(char:GetChildren()) do if item:IsA("Tool") and (item.Name:lower():find("gun") or item.Name:lower():find("revol") or item.Name:lower():find("pistol")) then hasGun = true break end end
+        if not hasGun and backpack then for _, item in pairs(backpack:GetChildren()) do if item:IsA("Tool") and (item.Name:lower():find("gun") or item.Name:lower():find("revol") or item.Name:lower():find("pistol")) then hasGun = true break end end end
+    end
+    if hasGun then return "Sheriff" end
+
+    return "Innocent"
+end
+
+--/// BUCLE PRINCIPAL ///--
+RunService.RenderStepped:Connect(function()
+    
+    -- [1. AIMBOT]
+    if getgenv().V1_Active then
+        VisualBeam.Color = ColorSequence.new(Color3.fromRGB(0, 170, 255)) 
+    elseif V2_Active then
+        VisualBeam.Color = ColorSequence.new(Color3.fromRGB(0, 255, 100)) 
+    else
+        VisualBeam.Enabled = false
+        getgenv().CurrentTarget = nil
+    end
+
+    if getgenv().V1_Active or V2_Active then
+        local murdChar = FindMurderer()
+        local myChar = LocalPlayer.Character
+        
+        if murdChar and myChar and murdChar:FindFirstChild("Head") and myChar:FindFirstChild("HumanoidRootPart") then
+            getgenv().CurrentTarget = murdChar.HumanoidRootPart 
+            
+            Att0.Parent = myChar.HumanoidRootPart
+            Att1.Parent = getgenv().CurrentTarget
+            VisualBeam.Parent = myChar.HumanoidRootPart
+            VisualBeam.Attachment0 = Att0
+            VisualBeam.Attachment1 = Att1
+            VisualBeam.Enabled = true
+        else
+            getgenv().CurrentTarget = nil
+            VisualBeam.Enabled = false
+        end
+    end
+
+-- [2. LIMPIEZA DE ESP]
+    for _, p in pairs(Players:GetPlayers()) do
+        if p.Character then
+            -- Limpieza Shadow
+            if not ESP_Shadow_Active and p.Character:FindFirstChild("SLX_Shadow") then 
+                p.Character.SLX_Shadow:Destroy() 
+            end
+            -- Limpieza Box
+            if not ESP_2D_Active and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart:FindFirstChild("SLX_Box") then 
+                p.Character.HumanoidRootPart.SLX_Box:Destroy() 
+            end
+            -- Limpieza Skeleton y Tracer Frame
+            if not ESP_Skeleton_Active and SkeletonGUI:FindFirstChild("Skel_"..p.Name) then 
+                SkeletonGUI["Skel_"..p.Name]:Destroy() 
+            end
+            if not ESP_Tracer_Active and SkeletonGUI:FindFirstChild("Tracer_"..p.Name) then 
+                SkeletonGUI["Tracer_"..p.Name]:Destroy() 
+            end
+
+            -- Limpieza Tracer Beam (Integrado correctamente aquí)
+            if not ESP_Tracer_Active then
+                local root = p.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    if root:FindFirstChild("SLX_Beam") then root.SLX_Beam:Destroy() end
+                    if root:FindFirstChild("SLX_Att") then root.SLX_Att:Destroy() end
+                end
+            end
+        end
+    end
+
+    -- [3. ESP JUGADORES]
+     if ESP_Shadow_Active or ESP_2D_Active or ESP_Skeleton_Active or ESP_Tracer_Active or ESP_Info_Active then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Head") then
+                local role = GetPlayerRole(p)
+                local color = Color3.fromRGB(0, 255, 0) -- Verde (Inocente)
+                if role == "Murderer" then color = Color3.fromRGB(255, 0, 0) -- Rojo
+                elseif role == "Sheriff" then color = Color3.fromRGB(0, 0, 255) end -- Azul
+                
+                -- SHADOW
+                if ESP_Shadow_Active then
+                    local highlight = p.Character:FindFirstChild("SLX_Shadow")
+                    if not highlight then highlight = Instance.new("Highlight", p.Character); highlight.Name = "SLX_Shadow"; highlight.FillTransparency = 0.5; highlight.OutlineTransparency = 0 end
+                    highlight.FillColor = color; highlight.OutlineColor = color
+                end
+
+                -- BOX
+                if ESP_2D_Active then
+                    local root = p.Character.HumanoidRootPart
+                    local box = root:FindFirstChild("SLX_Box")
+                    if not box then box = Instance.new("BillboardGui", root); box.Name = "SLX_Box"; box.AlwaysOnTop = true; box.Size = UDim2.new(4, 0, 5.5, 0); box.StudsOffset = Vector3.new(0, 0, 0); local frame = Instance.new("Frame", box); frame.Size = UDim2.new(1, 0, 1, 0); frame.BackgroundTransparency = 1; local stroke = Instance.new("UIStroke", frame); stroke.Thickness = 1.2; stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border end
+                    if box:FindFirstChild("Frame") then box.Frame.UIStroke.Color = color end
+                end
+
+                -- SKELETON
+                if ESP_Skeleton_Active then
+                    local skelName = "Skel_"..p.Name
+                    local skelFolder = SkeletonGUI:FindFirstChild(skelName)
+                    if not skelFolder then skelFolder = Instance.new("Folder", SkeletonGUI); skelFolder.Name = skelName; for i=1, 5 do local l = Instance.new("Frame", skelFolder); l.Name = "L"..i; l.AnchorPoint = Vector2.new(0.5, 0.5); l.ZIndex = 10 end end
+                    local char = p.Character; local Head = char.Head
+                    local Torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+                    local LArm = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
+                    local RArm = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+                    local LLeg = char:FindFirstChild("LeftFoot") or char:FindFirstChild("Left Leg")
+                    local RLeg = char:FindFirstChild("RightFoot") or char:FindFirstChild("Right Leg")
+                    if Head and Torso and LArm and RArm and LLeg and RLeg then
+                        local HeadP, Vis1 = Camera:WorldToViewportPoint(Head.Position)
+                        local TorsoP, Vis2 = Camera:WorldToViewportPoint(Torso.Position)
+                        local LArmP, Vis3 = Camera:WorldToViewportPoint(LArm.Position)
+                        local RArmP, Vis4 = Camera:WorldToViewportPoint(RArm.Position)
+                        local LLegP, Vis5 = Camera:WorldToViewportPoint(LLeg.Position)
+                        local RLegP, Vis6 = Camera:WorldToViewportPoint(RLeg.Position)
+                        if Vis2 then
+                            UpdateLine(skelFolder.L1, Vector2.new(HeadP.X, HeadP.Y), Vector2.new(TorsoP.X, TorsoP.Y), color, 1.2)
+                            UpdateLine(skelFolder.L2, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(LArmP.X, LArmP.Y), color, 1.2)
+                            UpdateLine(skelFolder.L3, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(RArmP.X, RArmP.Y), color, 1.2)
+                            UpdateLine(skelFolder.L4, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(LLegP.X, LLegP.Y), color, 1.2)
+                            UpdateLine(skelFolder.L5, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(RLegP.X, RLegP.Y), color, 1.2)
+                        else for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end end
+                    else for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end end
+                end
+
+-- [TRACERS 3D (BEAMS) - FIX DE VISIBILIDAD]
+                if ESP_Tracer_Active then
+                    local enemyRoot = p.Character.HumanoidRootPart
+                    local myChar = LocalPlayer.Character
+                    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+                    if enemyRoot and myRoot then
+                        -- 1. Crear Attachment en Enemigo si no existe
+                        local att = enemyRoot:FindFirstChild("SLX_Att")
+                        if not att then
+                            att = Instance.new("Attachment", enemyRoot)
+                            att.Name = "SLX_Att"
+                        end
+                        
+                        -- 2. Crear Beam si no existe
+                        local beam = enemyRoot:FindFirstChild("SLX_Beam")
+                        if not beam then
+                            beam = Instance.new("Beam", enemyRoot)
+                            beam.Name = "SLX_Beam"
+                            beam.FaceCamera = true
+                            beam.Width0 = 0.03
+                            beam.Width1 = 0.05
+                            beam.Transparency = NumberSequence.new(0.1)
+                        end
+
+                        -- 3. Crear Attachment en MI Torso si no existe
+                        local myAtt = myRoot:FindFirstChild("SLX_MyAtt")
+                        if not myAtt then
+                            myAtt = Instance.new("Attachment", myRoot)
+                            myAtt.Name = "SLX_MyAtt"
+                        end
+
+                        -- 4. Conectar Beam
+                        beam.Attachment0 = myAtt
+                        beam.Attachment1 = att
+                        beam.Color = ColorSequence.new(color)
+                        beam.Enabled = true
+                    end
+                end
+                
+-- PEGA AQUÍ EL BLOQUE DE NOMBRES 👇
+                -- [ESP INFO: NOMBRE + DISTANCIA + ROL]
+                if ESP_Info_Active then
+                    local head = p.Character:FindFirstChild("Head")
+                    if head then
+                        local infoGui = head:FindFirstChild("SLX_Info")
+                        if not infoGui then
+                            infoGui = Instance.new("BillboardGui", head)
+                            infoGui.Name = "SLX_Info"; infoGui.Size = UDim2.new(0, 100, 0, 50)
+                            infoGui.StudsOffset = Vector3.new(0, 3.5, 0); infoGui.AlwaysOnTop = true
+                            local label = Instance.new("TextLabel", infoGui)
+                            label.BackgroundTransparency = 1; label.Size = UDim2.new(1, 0, 1, 0)
+                            label.Font = Enum.Font.GothamBold; label.TextSize = 12
+                            label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0,0,0)
+                        end
+                        
+                        -- Calcular Metros
+                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        local dist = 0
+                        if myRoot then dist = math.floor((myRoot.Position - p.Character.HumanoidRootPart.Position).Magnitude) end
+
+                        -- Poner Texto
+                        local label = infoGui:FindFirstChildOfClass("TextLabel")
+                        if label then
+                            label.Text = "[".. role .. "] " .. p.Name .. "\n[" .. dist .. "m]"
+                            label.TextColor3 = color 
+                        end
+                    end
+                elseif not ESP_Info_Active then
+                    if p.Character and p.Character:FindFirstChild("Head") and p.Character.Head:FindFirstChild("SLX_Info") then
+                        p.Character.Head.SLX_Info:Destroy()
+                    end
+                end
+                -- 👆 FIN DEL BLOQUE QUE PEGASTE
+
+            end -- Cierra el if p ~= LocalPlayer
+        end -- Cierra el for loop (LA FIESTA)
+    end -- Cierra el if ESP_Active...
+
+    -- [4. LOGICA ESP GUN DROP (2D + HIGHLIGHT)]
+    local GunDrop = Workspace:FindFirstChild("GunDrop", true) 
+    if ESP_Gun_Active and GunDrop then
+        local highlight = GunDrop:FindFirstChild("SLX_GunESP")
+        if not highlight then highlight = Instance.new("Highlight"); highlight.Name = "SLX_GunESP"; highlight.FillColor = Color3.fromRGB(255, 255, 0); highlight.OutlineColor = Color3.fromRGB(255, 255, 255); highlight.FillTransparency = 0.2; highlight.OutlineTransparency = 0; highlight.Parent = GunDrop end
+        local textGui = GunDrop:FindFirstChild("SLX_GunText")
+        if not textGui then textGui = Instance.new("BillboardGui"); textGui.Name = "SLX_GunText"; textGui.AlwaysOnTop = true; textGui.Size = UDim2.new(0, 100, 0, 50); textGui.StudsOffset = Vector3.new(0, 2.5, 0); textGui.Parent = GunDrop; local label = Instance.new("TextLabel", textGui); label.BackgroundTransparency = 1; label.Size = UDim2.new(1, 0, 1, 0); label.Text = "🔫 DROPPED GUN"; label.TextColor3 = Color3.fromRGB(255, 255, 0); label.TextStrokeTransparency = 0; label.Font = Enum.Font.GothamBlack; label.TextSize = 15 end
+    elseif not ESP_Gun_Active and GunDrop then
+        if GunDrop:FindFirstChild("SLX_GunESP") then GunDrop.SLX_GunESP:Destroy() end
+        if GunDrop:FindFirstChild("SLX_GunText") then GunDrop.SLX_GunText:Destroy() end
+    end
+
+    -- [5. LOGICA ESP COINS 2D]
+    local CoinContainer = Workspace:FindFirstChild("CoinContainer", true)
+    if CoinContainer then
+        for _, coin in pairs(CoinContainer:GetChildren()) do
+            if coin.Name == "Coin_Server" then
+                if ESP_Coin_Active then
+                    local textGui = coin:FindFirstChild("SLX_CoinText")
+                    if not textGui then
+                        textGui = Instance.new("BillboardGui"); textGui.Name = "SLX_CoinText"; textGui.AlwaysOnTop = true; textGui.Size = UDim2.new(0, 40, 0, 40); textGui.StudsOffset = Vector3.new(0, 0, 0); textGui.Parent = coin
+                        local label = Instance.new("TextLabel", textGui); label.BackgroundTransparency = 1; label.Size = UDim2.new(1, 0, 1, 0); label.Text = "💰"; label.TextColor3 = Color3.fromRGB(255, 215, 0); label.TextSize = 14; label.Font = Enum.Font.GothamBold
+                    end
+                elseif not ESP_Coin_Active then
+                    if coin:FindFirstChild("SLX_CoinText") then coin.SLX_CoinText:Destroy() end
+                end
+            end
+        end
+    end
+
+end) 
+
+--// 6. LÓGICA DE DISPARO (WALLBANG + AUTO-EQUIP & SAVE) //--
+local function ExecuteKill()
+    local target = getgenv().CurrentTarget
+    if not target then return end
+    
+    local char = LocalPlayer.Character
+    local backpack = LocalPlayer.Backpack
+    
+    -- [NUEVO] Busca el arma en mano o mochila para el combo V2
+    local gun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
+    if not gun then return end
+
+    -- EQUIPA AUTOMÁTICAMENTE (Si no la tienes en la mano)
+    local originalParent = gun.Parent
+    if originalParent ~= char then 
+        char.Humanoid:EquipTool(gun)
+        task.wait(0.08) -- Tiempo para que el server registre que la sacaste
+    end
+
+    -- CÁLCULO DE PREDICCIÓN
+    local rawPing = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
+    local pingValue = tonumber(rawPing) or 50
+    local Prediction = (pingValue / 4000) + 0.175 
+    local TargetPos = target.Position + (target.AssemblyLinearVelocity * Prediction)
+    
+    -- WALLBANG (Nace arriba del murder)
+    local MagicOrigin = TargetPos + Vector3.new(0, 3.5, 0) 
+    local args = { CFrame.new(MagicOrigin), CFrame.new(TargetPos) }
+    
+    -- DISPARO Y GUARDADO RÁPIDO
+    if gun:FindFirstChild("Shoot") then 
+        gun.Shoot:FireServer(unpack(args))
+        
+        -- Si usas el Shoot V2, la guarda rápido para que no te vean el arma
+        if V2_Active then
+            task.wait(0.02)
+            gun.Parent = backpack 
+        end
+    end
+end
+
+--// FUNCIÓN TP GUN MANUAL (ESTILO YARHM) //--
+local function ManualTPGun()
+    -- YARHM busca el "GunDrop" o "PistolDrop" de forma recursiva
+    local gunDrop = Workspace:FindFirstChild("GunDrop", true) or Workspace:FindFirstChild("PistolDrop", true)
+    
+    if gunDrop then
+        local char, root, hum = GetValidCharacter() -- Usamos tu función de seguridad
+        if root then
+            local oldPos = root.CFrame -- Guarda tu posición actual
+            
+            -- Teletransporte instantáneo (Lógica YARHM)
+            root.CFrame = gunDrop.CFrame + Vector3.new(0, 3, 0)
+            
+            -- Espera mínima para que el servidor detecte el "touch" de la pistola
+            task.wait(0.3)
+            
+            -- Regresa a donde estabas para que no te maten
+            root.CFrame = oldPos
+        end
+    else
+        -- Notificación si no hay pistola en el suelo
+        StarterGui:SetCore("SendNotification", {
+            Title = "S l x Ultimate",
+            Text = "La pistola no ha caído aún, we.",
+            Duration = 3
+        })
+    end
+end
+
+--// 7. UI SETUP //--
+local THEME = { Background = Color3.fromRGB(10, 10, 18), Sidebar = Color3.fromRGB(15, 15, 25), Header = Color3.fromRGB(15, 15, 25), Accent1 = Color3.fromRGB(0, 255, 255), Accent2 = Color3.fromRGB(85, 0, 255), Text = Color3.fromRGB(240, 240, 240), TextDark = Color3.fromRGB(120, 120, 140), CardBg = Color3.fromRGB(20, 20, 35), FontMain = Enum.Font.GothamBlack, FontBody = Enum.Font.GothamMedium }
+
+if ParentTarget:FindFirstChild("SLX_GLASS_UI") then ParentTarget.SLX_GLASS_UI:Destroy() end
+local ScreenGui = Instance.new("ScreenGui"); ScreenGui.Name = "SLX_GLASS_UI"; ScreenGui.Parent = ParentTarget; ScreenGui.ResetOnSpawn = false; ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local ActiveQuickButtons = {}
+local function ApplyNeonGradient(instance) local g = Instance.new("UIGradient"); g.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, THEME.Accent1), ColorSequenceKeypoint.new(1, THEME.Accent2)}; g.Rotation = 45; g.Parent = instance; return g end
+local function PlayAudio(id) local s = Instance.new("Sound"); s.Name = "SFX"; s.SoundId = "rbxassetid://" .. tostring(id); s.Volume = 1.5; s.Parent = ParentTarget; s:Play(); Debris:AddItem(s, 3) end
+local function MakeDraggable(frame) local dragging, dragInput, dragStart, startPos; local function Update(input) local delta = input.Position - dragStart; TweenService:Create(frame, TweenInfo.new(0.05), {Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)}):Play() end; frame.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; dragStart = input.Position; startPos = frame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end); frame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end); UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then Update(input) end end) end
+local function AnimateClick(btn) local os = btn.Size; local s = TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(os.X.Scale * 0.95, 0, os.Y.Scale * 0.95, 0)}); local g = TweenService:Create(btn, TweenInfo.new(0.1), {Size = os}); s:Play(); s.Completed:Wait(); g:Play() end
+
+local function ToggleMobileButton(text)
+    if ActiveQuickButtons[text] then ActiveQuickButtons[text]:Destroy(); ActiveQuickButtons[text] = nil; return end
+    local QuickBtn = Instance.new("TextButton"); QuickBtn.Name = "QB_" .. text; QuickBtn.Size = UDim2.new(0, 120, 0, 40); QuickBtn.Position = UDim2.new(0.5, -60, 0.2, 0); QuickBtn.BackgroundColor3 = Color3.new(0,0,0); QuickBtn.BackgroundTransparency = 0.5; QuickBtn.Text = text; QuickBtn.TextColor3 = Color3.new(1,1,1); QuickBtn.Font = THEME.FontBody; QuickBtn.TextSize = 14; QuickBtn.Parent = ScreenGui; QuickBtn.ZIndex = 10 -- Asegurar que esté arriba
+    local QCorner = Instance.new("UICorner"); QCorner.CornerRadius = UDim.new(0, 8); QCorner.Parent = QuickBtn; local QStroke = Instance.new("UIStroke"); QStroke.Thickness = 2; QStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; QStroke.Parent = QuickBtn
+    task.spawn(function() while QuickBtn.Parent do local hue = tick() % 5 / 5; QStroke.Color = Color3.fromHSV(hue, 1, 1); task.wait() end end)
+    MakeDraggable(QuickBtn); 
+    
+    -- ESTO ES LO QUE DEBE HACER EL BOTÓN 👇
+    QuickBtn.MouseButton1Click:Connect(function() 
+        PlayAudio(9119720940); 
+        AnimateClick(QuickBtn); 
+        if text == "Shoot" then 
+            ExecuteKill() -- Llamada directa a la función wallbang
+        end 
+    end); 
+       ActiveQuickButtons[text] = QuickBtn
+end -- Este cierra la función ToggleMobileButton
+
+local MainFrame = Instance.new("Frame"); 
+MainFrame.Name = "MainFrame"; 
+MainFrame.Size = UDim2.new(0, 650, 0, 380); 
+MainFrame.Position = UDim2.new(0.5, -325, 0.5, -190); 
+MainFrame.BackgroundColor3 = THEME.Background; 
+MainFrame.BackgroundTransparency = 0.1; 
+MainFrame.Parent = ScreenGui 
+
+-- AQUÍ ESTABA EL ERROR 1 (Ya lo separé)
+MainFrame.Visible = false 
+
+local MainCorner = Instance.new("UICorner"); MainCorner.CornerRadius = UDim.new(0, 12); MainCorner.Parent = MainFrame; 
+local MainStroke = Instance.new("UIStroke"); MainStroke.Thickness = 3; MainStroke.Parent = MainFrame; ApplyNeonGradient(MainStroke); 
+MakeDraggable(MainFrame)
+
+-----------------------------------------------------------
+-- [PANTALLA DE CARGA CORREGIDA]
+-----------------------------------------------------------
+local LoaderGui = Instance.new("ScreenGui")
+LoaderGui.Name = "SLX_LOADER"
+LoaderGui.Parent = ParentTarget
+LoaderGui.IgnoreGuiInset = true
+LoaderGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+
+local LoadFrame = Instance.new("Frame")
+LoadFrame.Size = UDim2.new(1, 0, 1, 0)
+LoadFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 10) 
+LoadFrame.Parent = LoaderGui
+
+-- 1. Fondo de Partículas
+local PContainer = Instance.new("Frame", LoadFrame)
+PContainer.Size = UDim2.new(1,0,1,0); PContainer.BackgroundTransparency = 1
+task.spawn(function()
+    while LoadFrame.Parent do
+        local p = Instance.new("Frame"); local s = math.random(2,5); p.Size = UDim2.new(0,s,0,s); p.BackgroundColor3 = THEME.Accent1; p.BackgroundTransparency = 0.6; p.Position = UDim2.new(math.random(),0,1,10); p.Parent = PContainer; Instance.new("UICorner",p).CornerRadius = UDim.new(1,0)
+        TweenService:Create(p, TweenInfo.new(math.random(3,6)), {Position = UDim2.new(math.random(),0,-0.1,0), BackgroundTransparency=1}):Play(); Debris:AddItem(p, 6); task.wait(0.1)
+    end
+end)
+
+-- 2. Logo Grande
+local BigLogo = Instance.new("TextLabel")
+BigLogo.Size = UDim2.new(1, 0, 0, 100); BigLogo.Position = UDim2.new(0, 0, 0.4, -50)
+BigLogo.BackgroundTransparency = 1; BigLogo.Text = "S L X  H U B"; BigLogo.Font = THEME.FontMain; BigLogo.TextColor3 = THEME.Accent1; BigLogo.TextSize = 50; BigLogo.Parent = LoadFrame
+Instance.new("UIStroke", BigLogo).Thickness = 2 
+
+-- 3. Barra de Carga
+local BarBg = Instance.new("Frame")
+BarBg.Size = UDim2.new(0, 300, 0, 6); BarBg.Position = UDim2.new(0.5, -150, 0.5, 20); BarBg.BackgroundColor3 = Color3.fromRGB(30,30,50); BarBg.Parent = LoadFrame; Instance.new("UICorner", BarBg).CornerRadius = UDim.new(1,0)
+local BarFill = Instance.new("Frame")
+BarFill.Size = UDim2.new(0, 0, 1, 0); BarFill.BackgroundColor3 = THEME.Accent1; BarFill.Parent = BarBg; Instance.new("UICorner", BarFill).CornerRadius = UDim.new(1,0)
+
+-- 4. Texto de Porcentaje
+local PctText = Instance.new("TextLabel")
+PctText.Size = UDim2.new(1, 0, 0, 20); PctText.Position = UDim2.new(0, 0, 1, 5); PctText.BackgroundTransparency = 1; PctText.Text = "0%"; PctText.TextColor3 = Color3.fromRGB(150,150,150); PctText.Font = THEME.FontBody; PctText.TextSize = 14; PctText.Parent = BarBg
+
+-- 5. Lógica de Saltos
+task.spawn(function()
+    local jumps = {10, 20, 30, 50, 80, 100}
+    for _, pct in ipairs(jumps) do
+        local waitTime = math.random(3, 8) / 10 
+        task.wait(waitTime)
+        TweenService:Create(BarFill, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {Size = UDim2.new(pct/100, 0, 1, 0)}):Play()
+        PctText.Text = pct .. "%"
+    end
+    
+    task.wait(0.5)
+    
+    -- Desvanecer Loader
+    TweenService:Create(LoadFrame, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(BigLogo, TweenInfo.new(0.5), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+    TweenService:Create(BarBg, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(BarFill, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(PctText, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+    
+    task.wait(0.6)
+    LoaderGui:Destroy() 
+    
+    -- AQUÍ ESTABA EL ERROR 2 (Ya le puse los guiones de comentario)
+    -- MOSTRAR EL MENÚ PRINCIPAL
+    if MainFrame then
+        MainFrame.Visible = true 
+        TweenService:Create(MainFrame, TweenInfo.new(0.5), {Position = UDim2.new(0.5, -325, 0.5, -190)}):Play() 
+    end
+end)
+
+-- [FONDO ANIMADO DEL MENÚ]
+MainFrame.ClipsDescendants = true 
+local ParticleContainer = Instance.new("Frame")
+ParticleContainer.Name = "ParticleContainer"
+ParticleContainer.Size = UDim2.new(1, 0, 1, 0)
+ParticleContainer.BackgroundTransparency = 1
+ParticleContainer.ZIndex = 1 
+ParticleContainer.Parent = MainFrame
+
+local function SpawnParticle()
+    if not MainFrame.Visible then return end 
+    local p = Instance.new("Frame")
+    local size = math.random(2, 5) 
+    p.Size = UDim2.new(0, size, 0, size)
+    p.BackgroundColor3 = THEME.Accent1 
+    p.BackgroundTransparency = 0.6 
+    p.BorderSizePixel = 0
+    p.Position = UDim2.new(math.random(), 0, 1, 10) 
+    p.Parent = ParticleContainer
+    local c = Instance.new("UICorner", p)
+    c.CornerRadius = UDim.new(1, 0)
+    local tween = TweenService:Create(p, TweenInfo.new(math.random(5, 10), Enum.EasingStyle.Linear), {Position = UDim2.new(math.random(), 0, -0.1, 0), BackgroundTransparency = 1})
+    tween:Play()
+    Debris:AddItem(p, 10) 
+end
+
+task.spawn(function()
+    while true do
+        SpawnParticle()
+        task.wait(0.2) 
+    end
+end)
+
+-- [FONDO ANIMADO: PARTÍCULAS FLOTANTES "OVERDRIVE STYLE"]
+MainFrame.ClipsDescendants = true -- Para que las partículas no se salgan del cuadro
+
+local ParticleContainer = Instance.new("Frame")
+ParticleContainer.Name = "ParticleContainer"
+ParticleContainer.Size = UDim2.new(1, 0, 1, 0)
+ParticleContainer.BackgroundTransparency = 1
+ParticleContainer.ZIndex = 1 -- Al fondo
+ParticleContainer.Parent = MainFrame
+
+-- Función para crear una partícula
+local function SpawnParticle()
+    if not MainFrame.Visible then return end -- Si el menú está cerrado, no gastamos memoria
+
+    local p = Instance.new("Frame")
+    local size = math.random(2, 5) -- Tamaño aleatorio (2 a 5 pixeles)
+    p.Size = UDim2.new(0, size, 0, size)
+    p.BackgroundColor3 = THEME.Accent1 -- Color del tema (Azulito)
+    p.BackgroundTransparency = 0.6 -- Un poco transparente
+    p.BorderSizePixel = 0
+    p.Position = UDim2.new(math.random(), 0, 1, 10) -- Nace abajo del todo
+    p.Parent = ParticleContainer
+    
+    -- Hacemos que sea redonda
+    local c = Instance.new("UICorner", p)
+    c.CornerRadius = UDim.new(1, 0)
+
+    -- Animación: Flotar hacia arriba y desaparecer
+    local duration = math.random(5, 10) -- Velocidad aleatoria
+    local targetPos = UDim2.new(math.random(), 0, -0.1, 0) -- Termina arriba
+    
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(p, tweenInfo, {
+        Position = targetPos, 
+        BackgroundTransparency = 1 -- Se desvanece al final
+    })
+    
+    tween:Play()
+    Debris:AddItem(p, duration) -- Se borra automáticamente cuando termina
+end
+
+-- Bucle infinito de partículas (Crea una nueva cada 0.3 segundos)
+task.spawn(function()
+    while true do
+        SpawnParticle()
+        task.wait(0.2) -- Ajusta esto: 0.1 = Muchas partículas, 0.5 = Pocas
+    end
+end)
+
+local Header = Instance.new("Frame"); Header.Name = "Header"; Header.Size = UDim2.new(1, 0, 0, 60); Header.BackgroundColor3 = THEME.Header; Header.BackgroundTransparency = 0.5; Header.Parent = MainFrame; local HeaderCorner = Instance.new("UICorner"); HeaderCorner.CornerRadius = UDim.new(0, 12); HeaderCorner.Parent = Header
+local ProfileCard = Instance.new("Frame"); ProfileCard.Size = UDim2.new(0, 200, 0, 44); ProfileCard.Position = UDim2.new(0, 10, 0, 8); ProfileCard.BackgroundColor3 = THEME.CardBg; ProfileCard.BackgroundTransparency = 0.3; ProfileCard.Parent = Header; local CardCorner = Instance.new("UICorner"); CardCorner.CornerRadius = UDim.new(0, 8); CardCorner.Parent = ProfileCard
+local ProfileImage = Instance.new("ImageLabel"); ProfileImage.Size = UDim2.new(0, 36, 0, 36); ProfileImage.Position = UDim2.new(0, 4, 0, 4); ProfileImage.BackgroundColor3 = Color3.fromRGB(0,0,0); ProfileImage.Parent = ProfileCard; local PCorner = Instance.new("UICorner"); PCorner.CornerRadius = UDim.new(0, 6); PCorner.Parent = ProfileImage; task.spawn(function() local content = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48); ProfileImage.Image = content end)
+local ProfileName = Instance.new("TextLabel"); ProfileName.Size = UDim2.new(0, 140, 0, 20); ProfileName.Position = UDim2.new(0, 48, 0, 2); ProfileName.BackgroundTransparency = 1; ProfileName.Text = LocalPlayer.Name; ProfileName.Font = THEME.FontMain; ProfileName.TextColor3 = THEME.Text; ProfileName.TextSize = 14; ProfileName.TextXAlignment = Enum.TextXAlignment.Left; ProfileName.Parent = ProfileCard
+local WelcomeText = Instance.new("TextLabel"); WelcomeText.Size = UDim2.new(0, 140, 0, 15); WelcomeText.Position = UDim2.new(0, 48, 0, 22); WelcomeText.BackgroundTransparency = 1; WelcomeText.Text = "Welcome User"; WelcomeText.Font = THEME.FontBody; WelcomeText.TextColor3 = THEME.Accent1; WelcomeText.TextSize = 11; WelcomeText.TextXAlignment = Enum.TextXAlignment.Left; WelcomeText.Parent = ProfileCard
+local StatsContainer = Instance.new("Frame"); StatsContainer.Size = UDim2.new(0, 220, 1, 0); StatsContainer.Position = UDim2.new(1, -230, 0, 0); StatsContainer.BackgroundTransparency = 1; StatsContainer.Parent = Header
+local function CreateStatCard(name, pos) local Card = Instance.new("Frame"); Card.Size = UDim2.new(0, 100, 0, 44); Card.Position = pos; Card.BackgroundColor3 = THEME.CardBg; Card.BackgroundTransparency = 0.3; Card.Parent = StatsContainer; local CCorner = Instance.new("UICorner"); CCorner.CornerRadius = UDim.new(0, 8); CCorner.Parent = Card; local Title = Instance.new("TextLabel"); Title.Size = UDim2.new(1, 0, 0, 15); Title.Position = UDim2.new(0, 0, 0, 2); Title.BackgroundTransparency = 1; Title.Text = name; Title.Font = THEME.FontBody; Title.TextColor3 = THEME.TextDark; Title.TextSize = 10; Title.Parent = Card; local Value = Instance.new("TextLabel"); Value.Size = UDim2.new(1, 0, 0, 25); Value.Position = UDim2.new(0, 0, 0, 15); Value.BackgroundTransparency = 1; Value.Text = "--"; Value.Font = THEME.FontMain; Value.TextColor3 = THEME.Accent1; Value.TextSize = 16; Value.Parent = Card; return Value end
+local FPSVal = CreateStatCard("FPS", UDim2.new(0, 0, 0, 8)); local PingVal = CreateStatCard("PING", UDim2.new(0, 110, 0, 8)); task.spawn(function() RunService.RenderStepped:Connect(function(dt) FPSVal.Text = math.floor(1/dt) end); while true do local p = 0; pcall(function() p = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():match("%d+")) end); PingVal.Text = p .. "ms"; task.wait(1) end end)
+local Sidebar = Instance.new("Frame"); Sidebar.Name = "Sidebar"; Sidebar.Size = UDim2.new(0, 150, 1, -60); Sidebar.Position = UDim2.new(0, 0, 0, 60); Sidebar.BackgroundColor3 = THEME.Sidebar; Sidebar.BackgroundTransparency = 0.5; Sidebar.Parent = MainFrame; local TabContainer = Instance.new("Frame"); TabContainer.Size = UDim2.new(1, -2, 1, 0); TabContainer.BackgroundTransparency = 1; TabContainer.Parent = Sidebar; local SidebarList = Instance.new("UIListLayout"); SidebarList.Padding = UDim.new(0, 6); SidebarList.Parent = TabContainer; local SidebarPadding = Instance.new("UIPadding"); SidebarPadding.PaddingTop = UDim.new(0, 10); SidebarPadding.Parent = TabContainer
+local ContentContainer = Instance.new("Frame"); ContentContainer.Size = UDim2.new(1, -170, 1, -80); ContentContainer.Position = UDim2.new(0, 160, 0, 70); ContentContainer.BackgroundTransparency = 1; ContentContainer.Parent = MainFrame
+local Categories = {"Combat", "Render", "Farm", "Movement", "Settings"}; local Pages = {}; local Tabs = {}
+for i, catName in ipairs(Categories) do local Page = Instance.new("ScrollingFrame"); Page.Name = catName; Page.Size = UDim2.new(1, 0, 1, 0); Page.BackgroundTransparency = 1; Page.Visible = false; Page.Parent = ContentContainer; Pages[catName] = Page; local PLayout = Instance.new("UIListLayout"); PLayout.Padding = UDim.new(0, 8); PLayout.Parent = Page; local TabBtn = Instance.new("TextButton"); TabBtn.Size = UDim2.new(0, 130, 0, 35); TabBtn.BackgroundColor3 = THEME.CardBg; TabBtn.BackgroundTransparency = 0.8; TabBtn.Text = catName; TabBtn.TextColor3 = THEME.TextDark; TabBtn.Font = THEME.FontBody; TabBtn.TextSize = 14; TabBtn.AutoButtonColor = false; TabBtn.LayoutOrder = i; TabBtn.Parent = TabContainer; local TCorner = Instance.new("UICorner"); TCorner.CornerRadius = UDim.new(0, 8); TCorner.Parent = TabBtn; TabBtn.MouseButton1Click:Connect(function() PlayAudio(6324790483); AnimateClick(TabBtn); for _, p in pairs(Pages) do p.Visible = false end; for _, t in pairs(Tabs) do TweenService:Create(t, TweenInfo.new(0.2), {BackgroundTransparency = 0.8, TextColor3 = THEME.TextDark}):Play() end; Pages[catName].Visible = true; TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.4, TextColor3 = THEME.Accent1}):Play() end); Tabs[catName] = TabBtn end; if Tabs["Combat"] then Pages["Combat"].Visible = true end
+
+--// SEGURIDAD: BUSCA PERSONAJE VIVO //--
+local function GetValidCharacter()
+    local char = LocalPlayer.Character
+    if not char or not char.Parent then return nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChild("Humanoid")
+    if root and hum and hum.Health > 0 then
+        return char, root, hum
+    end
+    return nil
+end
+
+--// LÓGICA TP GUN: MODO ULTRA RÁPIDO (ESTILO YARHM) //--
+local function ManualTPGun()
+    -- YARHM busca recursivamente en todo el Workspace
+    local gunDrop = Workspace:FindFirstChild("GunDrop", true) or Workspace:FindFirstChild("PistolDrop", true)
+    
+    if gunDrop then
+        local char, root, hum = GetValidCharacter()
+        if root then
+            local oldPos = root.CFrame -- Guarda tu posición
+            
+            -- TP Instantáneo a la pistola
+            root.CFrame = gunDrop.CFrame + Vector3.new(0, 2, 0)
+            
+            -- Un frame de espera (Invisible)
+            task.wait() 
+            
+            -- Regreso al origen
+            root.CFrame = oldPos 
+        end
+    else
+        -- Notificación si no hay arma tirada
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "S l x Ultimate",
+            Text = "No hay pistola tirada todavía, we.",
+            Duration = 2
+        })
+    end
+end
+
+local function CreateNeoToggle(parent, text)
+    local Frame = Instance.new("TextButton"); Frame.Size = UDim2.new(1, -5, 0, 40); Frame.BackgroundColor3 = THEME.CardBg; Frame.BackgroundTransparency = 0.4; Frame.Text = ""; Frame.AutoButtonColor = false; Frame.Parent = parent
+    local C = Instance.new("UICorner"); C.CornerRadius = UDim.new(0, 6); C.Parent = Frame
+    local L = Instance.new("TextLabel"); L.Text = text; L.TextColor3 = THEME.Text; L.Font = THEME.FontBody; L.TextSize = 13; L.BackgroundTransparency = 1; L.Position = UDim2.new(0, 10, 0, 0); L.Size = UDim2.new(0.7, 0, 1, 0); L.TextXAlignment = Enum.TextXAlignment.Left; L.Parent = Frame
+    local Box = Instance.new("Frame"); Box.Size = UDim2.new(0, 20, 0, 20); Box.Position = UDim2.new(1, -30, 0.5, -10); Box.BackgroundColor3 = Color3.fromRGB(10,10,20); Box.Parent = Frame; local BC = Instance.new("UICorner"); BC.CornerRadius = UDim.new(0, 4); BC.Parent = Box; local BS = Instance.new("UIStroke"); BS.Color = THEME.TextDark; BS.Parent = Box
+    local active = false
+    Frame.MouseButton1Click:Connect(function()
+        PlayAudio(6324790483); active = not active
+        if text == "Shoot V1 👾" then getgenv().V1_Active = active 
+                elseif text == "Shoot V2" then 
+            V2_Active = active
+            ToggleMobileButton("Shoot") 
+
+-- AQUÍ ESTÁ EL TP GUN MANUAL (Lógica YARHM)
+        elseif text == "Tp gun 🔫" or text == "Tp gun 🔫" or text == "Tp gun 🔫" then
+            if active then
+                ManualTPGun() -- Llama a la función que busca la pistola
+                
+                -- Como es manual, apagamos el botón solito después de un segundo
+                task.wait(0.5)
+                active = false 
+            end
+
+elseif text == "Auto Tp Gun" or text == "Auto Tp Gun" then
+    getgenv().AutoTPGun_Active = active 
+        elseif text == "ESP Shadow" then ESP_Shadow_Active = active
+        elseif text == "ESP 2D 8️⃣" then ESP_2D_Active = active
+        elseif text == "ESP Skeleton" then ESP_Skeleton_Active = active
+        elseif text == "ESP Gun" then ESP_Gun_Active = active 
+        elseif text == "ESP Coins" then ESP_Coin_Active = active
+        elseif text == "ESP Tracers" then ESP_Tracer_Active = active -- [BOTON TRACERS]
+        elseif text == "ESP Names" then ESP_Info_Active = active
+        elseif text == "Auto Farm Coins" then AutoFarm_Active = active
+        elseif text == "Auto Kill (Murder Only)" then AutoKill_Active = active -- [CONEXIÓN]
+        end
+        if active then TweenService:Create(Box, TweenInfo.new(0.2), {BackgroundColor3 = THEME.Accent1}):Play(); TweenService:Create(BS, TweenInfo.new(0.2), {Color = THEME.Accent1, Transparency = 0}):Play() else TweenService:Create(Box, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(10,10,20)}):Play(); TweenService:Create(BS, TweenInfo.new(0.2), {Color = THEME.TextDark}):Play() end
+    end)
+end
+
+local function CreateSlider(parent, text, min, max, callback)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, -5, 0, 50)
+    Frame.BackgroundColor3 = THEME.CardBg
+    Frame.BackgroundTransparency = 0.4
+    Frame.Parent = parent
+    local C = Instance.new("UICorner"); C.CornerRadius = UDim.new(0, 6); C.Parent = Frame
+    
+    local Label = Instance.new("TextLabel")
+    Label.Text = text
+    Label.TextColor3 = THEME.Text
+    Label.Font = THEME.FontBody
+    Label.TextSize = 13
+    Label.BackgroundTransparency = 1
+    Label.Position = UDim2.new(0, 10, 0, 5)
+    Label.Size = UDim2.new(1, -20, 0, 20)
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = Frame
+    
+    local ValueLabel = Instance.new("TextLabel")
+    ValueLabel.Text = tostring(min)
+    ValueLabel.TextColor3 = THEME.Accent1
+    ValueLabel.Font = THEME.FontMain
+    ValueLabel.TextSize = 13
+    ValueLabel.BackgroundTransparency = 1
+    ValueLabel.Position = UDim2.new(1, -40, 0, 5)
+    ValueLabel.Size = UDim2.new(0, 30, 0, 20)
+    ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    ValueLabel.Parent = Frame
+
+    local SliderBar = Instance.new("TextButton") -- Usamos botón para detectar click
+    SliderBar.Text = ""
+    SliderBar.AutoButtonColor = false
+    SliderBar.Size = UDim2.new(1, -20, 0, 6)
+    SliderBar.Position = UDim2.new(0, 10, 0, 35)
+    SliderBar.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+    SliderBar.Parent = Frame
+    local SBC = Instance.new("UICorner"); SBC.CornerRadius = UDim.new(1, 0); SBC.Parent = SliderBar
+    
+    local Fill = Instance.new("Frame")
+    Fill.Size = UDim2.new(0, 0, 1, 0)
+    Fill.BackgroundColor3 = THEME.Accent1
+    Fill.BorderSizePixel = 0
+    Fill.Parent = SliderBar
+    local FC = Instance.new("UICorner"); FC.CornerRadius = UDim.new(1, 0); FC.Parent = Fill
+    
+    -- Lógica del Slider
+    local dragging = false
+    local function Update(input)
+        local SizeX = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+        local Value = math.floor(min + ((max - min) * SizeX))
+        Fill.Size = UDim2.new(SizeX, 0, 1, 0)
+        ValueLabel.Text = tostring(Value)
+        callback(Value)
+    end
+    
+    SliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; Update(input)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then Update(input) end
+    end)
+    
+    -- Set inicial (Opcional, al 50%)
+    local startVal = (AutoFarm_Speed - min) / (max - min)
+    Fill.Size = UDim2.new(startVal, 0, 1, 0)
+    ValueLabel.Text = tostring(AutoFarm_Speed)
+end
+
+CreateNeoToggle(Pages["Combat"], "Shoot V1 👾")
+CreateNeoToggle(Pages["Combat"], "Shoot V2")
+
+CreateNeoToggle(Pages["Combat"], "Tp gun 🔫")
+CreateNeoToggle(Pages["Combat"], "Auto Tp Gun")
+
+CreateNeoToggle(Pages["Combat"], "Knife Aura⚡")
+CreateNeoToggle(Pages["Combat"], "Kill For All - murder")
+
+CreateNeoToggle(Pages["Combat"], "Kill For sheriff - murder🌪️")
+CreateNeoToggle(Pages["Combat"], "- Next -")
+
+
+CreateNeoToggle(Pages["Combat"], "Fling for murder🧑‍💻")
+CreateNeoToggle(Pages["Combat"], "Fling for sheriff")
+
+
+CreateNeoToggle(Pages["Combat"], "Aimbot🎯")
+CreateNeoToggle(Pages["Combat"], "Auto Shoot")
+
+
+CreateNeoToggle(Pages["Combat"], "Tp Shoot ☃️")
+CreateNeoToggle(Pages["Combat"], " - Next -")
+
+-- [ Render For ESP ]
+CreateNeoToggle(Pages["Render"], "ESP Shadow")
+CreateNeoToggle(Pages["Render"], "ESP 2D 8️⃣")
+
+
+CreateNeoToggle(Pages["Render"], "ESP Skeleton")
+CreateNeoToggle(Pages["Render"], "ESP Tracers") -- NUEVO BOTON
+
+
+CreateNeoToggle(Pages["Render"], "ESP Names") -- [NUEVO BOTON]
+CreateNeoToggle(Pages["Render"], "X ray") 
+
+
+CreateNeoToggle(Pages["Render"], "ESP Gun") 
+CreateNeoToggle(Pages["Render"], "ESP Coins") 
+
+-- [ Movement Z ]
+CreateNeoToggle(Pages["Movement"], "Fly")
+CreateNeoToggle(Pages["Movement"], "Anti fling")
+
+
+CreateNeoToggle(Pages["Movement"], "Speed")
+CreateNeoToggle(Pages["Movement"], "Invisible")
+
+
+CreateNeoToggle(Pages["Movement"], "Speed glich")
+CreateNeoToggle(Pages["Movement"], "Anti AFK")
+
+
+-- [ Farm Seción ]
+CreateNeoToggle(Pages["Farm"], "Auto Farm Coins")
+-- [SLIDER VELOCIDAD]
+CreateSlider(Pages["Farm"], "Farm Speed", 1, 32, function(value)
+    AutoFarm_Speed = value -- <--- ESTO ES LO QUE FALTA WE
+end)
+
+-- 👇 [AQUÍ PEGAS EL NUEVO BOTÓN] 👇
+CreateNeoToggle(Pages["Farm"], "Auto Kill (Murder Only)")
+
+--// BOTÓN DE MINIMIZAR (MODIFICADO CON TU LOGO) //--
+local ASSET_ID = "94561335572570" -- Tu ID Maestro
+
+local MasterToggle = Instance.new("TextButton")
+MasterToggle.Name = "MasterToggle"
+MasterToggle.Size = UDim2.new(0, 65, 0, 65) -- Lo hice un poquito más grande para que luzca la foto
+MasterToggle.Position = UDim2.new(0, 50, 0, 50)
+MasterToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Fondo de seguridad
+MasterToggle.Text = "" -- Quitamos el texto original
+MasterToggle.AutoButtonColor = false
+MasterToggle.Parent = ScreenGui
+
+local MCorner = Instance.new("UICorner")
+MCorner.CornerRadius = UDim.new(0, 12) -- Esquinas más finas
+MCorner.Parent = MasterToggle
+
+local MStroke = Instance.new("UIStroke")
+MStroke.Thickness = 3
+MStroke.Parent = MasterToggle
+ApplyNeonGradient(MStroke) -- Mantenemos tu efecto Neon original
+
+-- INYECTAMOS TU FOTO AQUÍ
+local MIcon = Instance.new("ImageLabel") -- Cambiamos TextLabel por ImageLabel
+MIcon.Name = "LogoImage"
+MIcon.Size = UDim2.new(1, 0, 1, 0) -- Que ocupe todo el botón
+MIcon.Position = UDim2.new(0, 0, 0, 0)
+MIcon.BackgroundTransparency = 1
+MIcon.Image = "rbxthumb://type=Asset&id=" .. ASSET_ID .. "&w=420&h=420"
+MIcon.ScaleType = Enum.ScaleType.Crop -- Esto hace que la foto rellene todo sin bordes negros
+MIcon.ZIndex = MasterToggle.ZIndex + 1
+MIcon.Parent = MasterToggle
+
+-- Redondeamos la foto también
+local IconCorner = Instance.new("UICorner")
+IconCorner.CornerRadius = UDim.new(0, 12)
+IconCorner.Parent = MIcon
+
+-- Mantenemos tus funciones originales de Drag y Click
+MakeDraggable(MasterToggle)
+
+MasterToggle.MouseButton1Click:Connect(function() 
+    PlayAudio(6324790483) 
+    AnimateClick(MasterToggle) 
+    MainFrame.Visible = not MainFrame.Visible 
+end)
+
+-- [LOGICA AUTO FARM V15 - FÉNIX REAL (ANTI-RESET + FARM + KILL)]
+-- FIX: Detecta cuando mueres, ESPERA a que revivas y se vuelve a conectar SOLO.
+-- UPDATE: Modo "Alfombra" (Personaje rotado 90° para estar 100% acostado y reducir hitbox).
+
+local VirtualUser = game:GetService("VirtualUser")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+-- ANTI-AFK (Para que no te saque mientras esperas respawn)
+LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+-- [FUNCIÓN CLAVE] Busca al personaje VIVO. Si estás muerto, espera.
+local function GetValidCharacter()
+    local char = LocalPlayer.Character
+    if not char or not char.Parent then return nil end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChild("Humanoid")
+    
+    -- Solo regresamos el personaje si tiene vida y cuerpo
+    if root and hum and hum.Health > 0 then
+        return char, root, hum
+    else
+        return nil
+    end
+end
+
+local function ActivateNoclip(char)
+    if char then
+        for _, p in pairs(char:GetDescendants()) do
+            if p:IsA("BasePart") and p.CanCollide == true then 
+                p.CanCollide = false 
+            end
+        end
+    end
+end
+
+-- HITBOX EXPANDER (Copiado del SLX Hub)
+local function ExpandEnemyHitbox(enemy)
+    local char = enemy.Character
+    if not char then return end
+    local head = char:FindFirstChild("Head")
+    if head and head.Size.X < 10 then -- Solo si no es gigante ya
+        local scale = 5
+        head.Size = Vector3.new(scale, scale, scale)
+        head.Massless = true
+        head.CanCollide = false
+        head.Transparency = 0.5
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") then part.CanCollide = false end
+        end
+    end
+end
+
+local function GetClosestCoin()
+    local closest = nil
+    local minDst = 300
+    
+    -- Obtenemos personaje seguro
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    
+    local CoinContainer = Workspace:FindFirstChild("CoinContainer", true)
+    if CoinContainer then
+        for _, coin in pairs(CoinContainer:GetChildren()) do
+            if coin.Name == "Coin_Server" and coin:FindFirstChild("CoinVisual") and coin.CoinVisual.Transparency == 0 then
+                local dst = (root.Position - coin.Position).Magnitude
+                if dst < minDst then
+                    minDst = dst
+                    closest = coin
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- BUCLE PRINCIPAL BLINDADO
+task.spawn(function()
+    while true do
+        task.wait() -- Velocidad máxima
+        
+        -- Usamos pcall para que NUNCA CRASHEE, pase lo que pase
+        local success, err = pcall(function()
+            if AutoFarm_Active then
+                -- 1. INTENTAMOS OBTENER CUERPO VIVO
+                local char, root, hum = GetValidCharacter()
+                
+                if char and root and hum then
+                    -- === ESTAMOS VIVOS: A CHAMBEAR ===
+                    
+                    local targetCoin = GetClosestCoin()
+                    
+                    -- [FASE 1: FARM]
+                    if targetCoin then
+                        ActivateNoclip(char)
+                        hum.PlatformStand = true 
+                        root.Anchored = true 
+                        
+          -- [FIX ACOSTADO] Rotación de 90 grados para ir pecho tierra
+                        local ProneRotation = CFrame.Angles(math.rad(90), 0, 0)
+                        
+                        -- [AJUSTE DE ALTURA MANUAL] 👇 MUEVELE AQUÍ WE 👇
+                        -- -3 = Muy enterrado
+                        -- -1 = Medio enterrado
+                        -- 0 = Normal (en la moneda)
+                        -- 2 = Flotando arriba
+                        local Altura = Vector3.new(0, -3, 0) 
+
+                        local dist = (root.Position - targetCoin.Position).Magnitude
+                        local speed = AutoFarm_Speed or 20
+                        
+                        -- Tweens seguros: Verificamos si la moneda sigue existiendo antes de movernos
+                        if dist > 4 and targetCoin.Parent then
+                            local time = dist / speed
+                            local TI = TweenInfo.new(time, Enum.EasingStyle.Linear)
+                            
+                            -- AQUI AGREGAMOS LA ALTURA: (targetCoin.CFrame + Altura)
+                            local tween = TweenService:Create(root, TI, {CFrame = (targetCoin.CFrame + Altura) * ProneRotation})
+                            tween:Play()
+                            
+                            -- Esperamos llegar, PERO vigilamos si morimos en el camino
+                            local start = tick()
+                            while (tick() - start < time) and targetCoin.Parent and hum.Health > 0 do
+                                task.wait()
+                            end
+                            if hum.Health <= 0 then return end -- Si morimos en el viaje, abortar
+                        else
+                            -- TAMBIEN AQUI AGREGAMOS LA ALTURA 👇
+                            root.CFrame = (targetCoin.CFrame + Altura) * ProneRotation
+                        end
+                        
+                        -- Recolección (Jitter)
+                        if targetCoin.Parent and hum.Health > 0 then
+                            root.Anchored = false 
+                            for i=1,3 do
+                                if not targetCoin.Parent then break end
+                                -- Mantenemos la rotación incluso al vibrar
+                                root.CFrame = targetCoin.CFrame * ProneRotation * CFrame.new(0.5,0,0)
+                                task.wait()
+                                root.CFrame = targetCoin.CFrame * ProneRotation * CFrame.new(-0.5,0,0)
+                                task.wait()
+                            end
+                            root.Velocity = Vector3.new(0,0,0)
+                            root.Anchored = true 
+                        end
+                        
+                    else
+                        -- [FASE 2: AUTO KILL (MURDER) o MODO LIBRE]
+                        
+                        -- Checar cuchillo
+                        local Knife = char:FindFirstChild("Knife") or LocalPlayer.Backpack:FindFirstChild("Knife")
+                        
+                        if AutoKill_Active and Knife then
+                            -- MODO EXTERMINADOR (Aquí sí nos levantamos para matar bien)
+                            if hum.PlatformStand then hum.PlatformStand = false end
+                            root.Anchored = true 
+                            
+                            if Knife.Parent ~= char then hum:EquipTool(Knife) end
+                            
+                            -- Matanza
+                            for _, enemy in pairs(Players:GetPlayers()) do
+                                if enemy ~= LocalPlayer and enemy.Character then
+                                    local eRoot = enemy.Character:FindFirstChild("HumanoidRootPart")
+                                    local eHum = enemy.Character:FindFirstChild("Humanoid")
+                                    
+                                    if eRoot and eHum and eHum.Health > 0 then
+                                        ExpandEnemyHitbox(enemy) -- Cabezas gigantes
+                                        
+                                        -- TP A QUEMARROPA (-1.5)
+                                        eRoot.CFrame = root.CFrame * CFrame.new(0, 0, -1.5)
+                                        eHum.Sit = true 
+                                        eRoot.Velocity = Vector3.new(0,0,0)
+                                    end
+                                end
+                            end
+                            
+                            if Knife.Parent == char then Knife:Activate() end
+                            
+                        else
+                            -- MODO LIBRE (Sin monedas, sin cuchillo)
+                            -- Aquí nos mantenemos acostados si estamos esperando (opcional) o nos levantamos
+                            if hum.PlatformStand then hum.PlatformStand = false end
+                            if root.Anchored then root.Anchored = false end
+                        end
+                    end
+                else
+                    -- === ESTAMOS MUERTOS O CARGANDO ===
+                    -- Esperamos pacientemente al respawn sin hacer nada loco
+                    task.wait(1) 
+                end
+            else
+                -- APAGADO MANUAL: Limpieza
+                local char = LocalPlayer.Character
+                if char then
+                    local hum = char:FindFirstChild("Humanoid")
+                    local root = char:FindFirstChild("HumanoidRootPart")
+                    if hum then hum.PlatformStand = false end
+                    if root then root.Anchored = false end
+                end
+                task.wait(0.5)
+            end
+        end)
+        
+        -- Si hubo error crítico, imprimimos y seguimos
+        if not success then 
+            warn("SLX AutoFarm Error (Retrying...):", err)
+            task.wait(1)
+        end
+    end
+end)
+
+--// BUCLE DE AUTO TP: VIGILA LA PISTOLA TODO EL TIEMPO //--
+task.spawn(function()
+    while true do
+        task.wait(0.5) -- Revisa 2 veces por segundo para no dar lag
+        if getgenv().AutoTPGun_Active then
+            -- Usamos la búsqueda de YARHM
+            local gunDrop = Workspace:FindFirstChild("GunDrop", true) or Workspace:FindFirstChild("PistolDrop", true)
+            
+            if gunDrop then
+                ManualTPGun() -- Llama al "cerebro" que ya tenemos arriba
+                
+                -- Esperamos 5 segundos después de recogerla para que no bugee el TP
+                task.wait(5) 
+            end
+        end
+    end
+end)
+
+-- [DETECTOR DE DISPARO POR TAP ÚNICO AL FINAL]
+local TouchStart = 0
+local StartPos = Vector2.new(0,0)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end 
+    if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) and getgenv().V1_Active then 
+        TouchStart = tick()
+        StartPos = input.Position 
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gp)
+    if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) and getgenv().V1_Active then
+        local Dur = tick() - TouchStart
+        local Dist = (Vector2.new(input.Position.X, input.Position.Y) - Vector2.new(StartPos.X, StartPos.Y)).Magnitude
+        if Dur < 0.25 and Dist < 20 then 
+            ExecuteKill() 
+        end
+    end
+end)
+
+task.spawn(function() PlayAudio("103282937573040"); StarterGui:SetCore("SendNotification", {Title = "S l x Ultimate", Text = "V1: Tiktok @ZslxT", Duration = 7}) end)
+task.spawn(function() local rot = 0; while true do rot = rot + 1; if MainStroke:FindFirstChild("UIGradient") then MainStroke.UIGradient.Rotation = rot end; if MStroke:FindFirstChild("UIGradient") then MStroke.UIGradient.Rotation = -rot end; task.wait(0.05) end end)
