@@ -386,11 +386,11 @@ local function ExecuteKill()
     -- CÁLCULO DE PREDICCIÓN
     local rawPing = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
     local pingValue = tonumber(rawPing) or 50
-    local Prediction = (pingValue / 2500) + 0.18 
+    local Prediction = (pingValue / 2500) + 0.21 
     local TargetPos = target.Position + (target.AssemblyLinearVelocity * Prediction)
     
     -- WALLBANG (Nace arriba del murder)
-    local MagicOrigin = TargetPos + Vector3.new(0, 0.6, 0) 
+    local MagicOrigin = TargetPos + Vector3.new(0, 1.2, 0) 
     local args = { CFrame.new(MagicOrigin), CFrame.new(TargetPos) }
     
     -- DISPARO Y GUARDADO RÁPIDO
