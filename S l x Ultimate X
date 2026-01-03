@@ -1151,22 +1151,27 @@ task.spawn(function()
     end
 end)
 
---// KNIFE AURA / SILENT AIM THROW //--
+--// EL VIGILANTE V2: KNIFE AURA (AHORA SÍ APUNTA) //--
 RunService.Stepped:Connect(function()
     if getgenv().KnifeAura_Active then
         local char = LocalPlayer.Character
         local knife = char and char:FindFirstChild("Knife")
         
-        -- Si tienes el cuchillo en la mano y estás atacando
+        -- Verificamos si tienes el cuchillo y si el remoto existe
         if knife and knife:FindFirstChild("Throw") then
             local target = GetNearestPlayer()
             if target then
-                -- Calculamos predicción básica para que no fallen
-                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.15)
+                -- 1. Calculamos dónde va a estar el enemigo (Predicción)
+                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.18)
                 
-                -- Redirigimos el ataque (Lógica YARHM)
-                -- Nota: Esto asume que el servidor acepta la redirección de CFrame
-                knife.Throw:FireServer(prediction) 
+                -- 2. EL SECRETO: Calculamos el ángulo desde TU cabeza hasta ÉL
+                -- Esto obliga al cuchillo a girar hacia el objetivo
+                local shootOrigin = char.Head.Position
+                local aimCFrame = CFrame.lookAt(shootOrigin, prediction)
+                
+                -- 3. Disparamos automáticamente (Modo Metralleta)
+                -- Nota: No hace falta que tú des click, el script lo hará por ti
+                knife.Throw:FireServer(aimCFrame) 
             end
         end
     end
