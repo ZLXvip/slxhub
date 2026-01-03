@@ -808,7 +808,6 @@ CreateNeoToggle(Pages["Combat"], "Knife Aura⚡")
 CreateNeoToggle(Pages["Combat"], "Kill For All - murder")
 
 CreateNeoToggle(Pages["Combat"], "Kill For sheriff - murder🌪️")
-CreateNeoToggle(Pages["Combat"], "- Next -")
 
 
 CreateNeoToggle(Pages["Combat"], "Fling for murder🧑‍💻")
@@ -820,7 +819,7 @@ CreateNeoToggle(Pages["Combat"], "Auto Shoot")
 
 
 CreateNeoToggle(Pages["Combat"], "Tp Shoot ☃️")
-CreateNeoToggle(Pages["Combat"], " - Next -")
+
 
 -- [ Render For ESP ]
 CreateNeoToggle(Pages["Render"], "ESP Shadow")
