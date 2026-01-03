@@ -21,6 +21,8 @@ local Camera = Workspace.CurrentCamera
 local ParentTarget = LocalPlayer:WaitForChild("PlayerGui")
 
 getgenv().AutoTP_Active = false -- Empieza apagado por seguridad
+getgenv().KnifeAura_Active = false
+local LastThrow = 0 -- Para no saturar el servidor de disparos
 
 --// Hooks For  PC/movil
 local success, err = pcall(function()
