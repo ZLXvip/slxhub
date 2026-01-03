@@ -732,11 +732,11 @@ local function CreateNeoToggle(parent, text)
                 active = false 
             end
 
-elseif text == "Knife Aura⚡" or text == "Knife Aura⚡" then
-    getgenv().KnifeAura_Active = active
-
 elseif text == "Auto Tp Gun" or text == "Auto Tp Gun" then
     getgenv().AutoTPGun_Active = active 
+
+elseif text == "Knife Aura⚡" or text == "Knife Aura⚡" then
+    getgenv().KnifeAura_Active = active
         elseif text == "ESP Shadow" then ESP_Shadow_Active = active
         elseif text == "ESP 2D 8️⃣" then ESP_2D_Active = active
         elseif text == "ESP Skeleton" then ESP_Skeleton_Active = active
