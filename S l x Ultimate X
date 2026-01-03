@@ -366,6 +366,28 @@ RunService.RenderStepped:Connect(function()
 
 end) 
 
+local function GetNearestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not myRoot then return nil end
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRoot = player.Character.HumanoidRootPart
+            local distance = (myRoot.Position - targetRoot.Position).Magnitude
+            
+            -- Solo apunta si está a una distancia razonable (puedes subir el 50 si quieres)
+            if distance < shortestDistance and distance < 100 then
+                closestPlayer = targetRoot
+                shortestDistance = distance
+            end
+        end
+    end
+    return closestPlayer
+end
+
 --// 6. LÓGICA DE DISPARO (WALLBANG + AUTO-EQUIP & SAVE) //--
 local function ExecuteKill()
     local target = getgenv().CurrentTarget
