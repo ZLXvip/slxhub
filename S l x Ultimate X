@@ -1148,6 +1148,27 @@ task.spawn(function()
     end
 end)
 
+--// KNIFE AURA / SILENT AIM THROW //--
+RunService.Stepped:Connect(function()
+    if getgenv().KnifeAura_Active then
+        local char = LocalPlayer.Character
+        local knife = char and char:FindFirstChild("Knife")
+        
+        -- Si tienes el cuchillo en la mano y estás atacando
+        if knife and knife:FindFirstChild("Throw") then
+            local target = GetNearestPlayer()
+            if target then
+                -- Calculamos predicción básica para que no fallen
+                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.15)
+                
+                -- Redirigimos el ataque (Lógica YARHM)
+                -- Nota: Esto asume que el servidor acepta la redirección de CFrame
+                knife.Throw:FireServer(prediction) 
+            end
+        end
+    end
+end)
+
 --// BUCLE DE AUTO TP: VIGILA LA PISTOLA TODO EL TIEMPO //--
 task.spawn(function()
     while true do
