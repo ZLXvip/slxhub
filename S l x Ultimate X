@@ -1151,30 +1151,35 @@ task.spawn(function()
     end
 end)
 
---// EL VIGILANTE V2: KNIFE AURA (AHORA SÍ APUNTA) //--
-RunService.Stepped:Connect(function()
-    if getgenv().KnifeAura_Active then
-        local char = LocalPlayer.Character
-        local knife = char and char:FindFirstChild("Knife")
-        
-        -- Verificamos si tienes el cuchillo y si el remoto existe
-        if knife and knife:FindFirstChild("Throw") then
-            local target = GetNearestPlayer()
-            if target then
-                -- 1. Calculamos dónde va a estar el enemigo (Predicción)
-                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.18)
-                
-                -- 2. EL SECRETO: Calculamos el ángulo desde TU cabeza hasta ÉL
-                -- Esto obliga al cuchillo a girar hacia el objetivo
-                local shootOrigin = char.Head.Position
-                local aimCFrame = CFrame.lookAt(shootOrigin, prediction)
-                
-                -- 3. Disparamos automáticamente (Modo Metralleta)
-                -- Nota: No hace falta que tú des click, el script lo hará por ti
-                knife.Throw:FireServer(aimCFrame) 
-            end
+--// SILENT AIM REAL (HOOK) - TÚ DISPARAS, ÉL APUNTA //--
+local mt = getrawmetatable(game)
+local old = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+
+    -- Detectamos si estás lanzando el cuchillo y si el botón está prendido
+    if method == "FireServer" and self.Name == "Throw" and getgenv().KnifeAura_Active then
+        local target = GetNearestPlayer()
+        if target then
+            -- 1. Calculamos dónde va a estar el enemigo (Predicción YARHM)
+            local prediction = target.Position + (target.AssemblyLinearVelocity * 0.18)
+            
+            -- 2. El Origen: Desde tu cabeza hasta la predicción
+            local myHead = LocalPlayer.Character.Head.Position
+            local aimCFrame = CFrame.lookAt(myHead, prediction)
+            
+            -- 3. CAMBIAZO: Reemplazamos tu puntería chueca por la del Aimbot
+            args[1] = aimCFrame -- Dirección perfecta
+            args[2] = 1         -- Fuerza máxima (para que llegue rápido)
+            
+            return old(self, unpack(args))
         end
     end
+
+    return old(self, ...)
 end)
 
 --// BUCLE DE AUTO TP: VIGILA LA PISTOLA TODO EL TIEMPO //--
