@@ -1151,58 +1151,81 @@ task.spawn(function()
     end
 end)
 
---// AIM ASSIST BRUTAL (TIPO YARHM LEGIT) //--
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+--// Z SLX HUB 👹 | PARTE 2: FUNCIONES DE COMBATE //--
 
+-- Función para saber si el enemigo está visible (Wall Check)
+local function IsVisible(targetPart)
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("Head") then return false end
+    
+    local origin = char.Head.Position
+    local destination = targetPart.Position
+    local direction = (destination - origin).Unit * (destination - origin).Magnitude
+    
+    -- Configuramos qué cosas debe ignorar el rayo (a ti y a tu equipo)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {char, workspace.CurrentCamera}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local result = workspace:Raycast(origin, direction, raycastParams)
+    
+    -- Si el rayo no chocó con nada O chocó directamente con el enemigo, es que está visible
+    if not result or result.Instance:IsDescendantOf(targetPart.Parent) then
+        return true
+    end
+    return false
+end
+
+-- Función GetTarget Mejorada (Ignora gente detrás de paredes)
 local function GetTarget()
     local closest = nil
-    local maxDist = 300 -- Rango alto
+    local maxDist = 250 -- Bajamos un poco el rango para que sea más natural
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
 
     for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             local root = p.Character.HumanoidRootPart
-            local dist = (myRoot.Position - root.Position).Magnitude
-            if dist < maxDist then
-                closest = root
-                maxDist = dist
+            local hum = p.Character:FindFirstChild("Humanoid")
+            
+            if hum and hum.Health > 0 then
+                local dist = (myRoot.Position - root.Position).Magnitude
+                
+                -- NUEVO: Solo lo agarra si está cerca Y si lo puedes ver
+                if dist < maxDist then
+                    if IsVisible(root) then -- AQUÍ ESTÁ EL WALL CHECK
+                        closest = root
+                        maxDist = dist
+                    end
+                end
             end
         end
     end
     return closest
 end
 
--- BUCLE RÁPIDO: SI TIENES CUCHILLO, APUNTA SOLO
-RunService.RenderStepped:Connect(function()
-    -- Solo si el botón está prendido
-    if getgenv().KnifeAura_Active then
-        local char = LocalPlayer.Character
-        if not char then return end
-        
-        -- Verificar si tienes el cuchillo equipado
-        local knife = char:FindFirstChild("Knife")
-        if knife then
-            local target = GetTarget()
-            if target then
-                -- Predicción para que no falles si corre
-                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.16)
-                
-                -- SI ESTÁS APRETANDO EL CLICK O TOCANDO LA PANTALLA (Disparando)
-                local isClicking = game:GetService("UserInputService"):IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or game:GetService("UserInputService").TouchEnabled 
-                
-                -- OJO: Si estás en móvil, esto apuntará siempre que tengas el cuchillo
-                -- Si estás en PC, solo cuando des click.
-                
-                -- Forzamos la cámara a mirar al enemigo
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, prediction)
-            end
-        end
+-- Función de Disparo Sheriff (V1 / V2) con Predicción de 0.18
+local function ExecuteKill()
+    local target = GetTarget() -- Usa la nueva función con Wall Check
+    if not target then return end
+    
+    local char = LocalPlayer.Character
+    local gun = char:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+    if not gun then return end
+
+    if gun.Parent ~= char then char.Humanoid:EquipTool(gun) end
+
+    local rawPing = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
+    local pingValue = tonumber(rawPing) or 50
+    local Prediction = (pingValue / 2500) + 0.18 -- Tu número mágico
+    
+    local TargetPos = target.Position + (target.AssemblyLinearVelocity * Prediction)
+    local MagicOrigin = TargetPos + Vector3.new(0, 1.2, 0) -- El fix de 1.2 que no falla
+    
+    if gun:FindFirstChild("Shoot") then
+        gun.Shoot:FireServer(CFrame.new(MagicOrigin), CFrame.new(TargetPos))
     end
-end)
+end
 
 --// BUCLE DE AUTO TP: VIGILA LA PISTOLA TODO EL TIEMPO //--
 task.spawn(function()
