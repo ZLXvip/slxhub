@@ -1151,7 +1151,7 @@ task.spawn(function()
     end
 end)
 
---// SILENT AIM V4: MÉTODO "SOLO DESTINO" (ANTI-RESETEO) //--
+--// SILENT AIM "MODO DIOS" (COPIA EXACTA DE LA LÓGICA YARHM) //--
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local mt = getrawmetatable(game)
@@ -1183,24 +1183,44 @@ mt.__namecall = newcclosure(function(self, ...)
     local args = {...}
     local method = getnamecallmethod()
 
-    -- Solo intervenimos si disparas y está prendido
+    -- Solo activamos si el botón está prendido y es una señal al servidor
     if method == "FireServer" and getgenv().KnifeAura_Active then
-        if self.Name == "Throw" or self.Name == "KnifeThrown" then
+        
+        -- DETECCIÓN DOBLE: ¿Es el método nuevo (KnifeThrown) o el viejo (Throw)?
+        local isThrow = (self.Name == "Throw")
+        local isKnifeThrown = (self.Name == "KnifeThrown")
+        
+        if isThrow or isKnifeThrown then
             local target = GetTarget()
-            
-            -- Si hay objetivo, hacemos la magia
             if target then
-                -- Predicción suave (0.16 para que no falle)
-                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.16)
+                -- 1. PREDICCIÓN (Lógica YARHM)
+                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.18)
                 
-                -- AQUÍ ESTÁ EL TRUCO PARA QUE NO SE RESETEE:
-                -- No tocamos args[1] (Origen). Dejamos que el juego ponga tu mano.
-                -- Solo cambiamos args[2] (Destino).
+                -- 2. EL FIX DEL RESETEO: USAR LA MANO REAL
+                local char = LocalPlayer.Character
+                local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
                 
-                -- Forzamos CFrame porque MM2 lo exige
-                args[2] = CFrame.new(prediction)
-                
-                return old(self, unpack(args))
+                if hand then
+                    -- CASO 1: SISTEMA NUEVO (Requires CFrame en Arg1 y Arg2)
+                    if isKnifeThrown then
+                        args[1] = CFrame.new(hand.Position) -- Origen (Mano)
+                        args[2] = CFrame.new(prediction)    -- Destino (Enemigo)
+                    
+                    -- CASO 2: SISTEMA VIEJO (Requires CFrame en Arg1, Vector3 en Arg2)
+                    elseif isThrow then
+                        -- A veces YARHM usa GetPivot() del cuchillo en vez de la mano
+                        local knife = char:FindFirstChild("Knife")
+                        if knife then
+                            args[1] = knife:GetPivot() -- Origen (Cuchillo)
+                        else
+                            args[1] = CFrame.new(hand.Position)
+                        end
+                        args[2] = prediction -- Destino (Vector3)
+                    end
+                    
+                    -- ¡DISPARO LIMPIO!
+                    return old(self, unpack(args))
+                end
             end
         end
     end
