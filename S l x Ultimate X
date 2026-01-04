@@ -1151,31 +1151,77 @@ task.spawn(function()
     end
 end)
 
---// SILENT AIM REAL (HOOK) - TÚ DISPARAS, ÉL APUNTA //--
+--// SILENT AIM UNIVERSAL (PARA CUCHILLO) //--
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 local mt = getrawmetatable(game)
 local old = mt.__namecall
 setreadonly(mt, false)
+
+-- Función para encontrar al enemigo (La misma de antes, asegurada)
+local function GetTarget()
+    local closest = nil
+    local maxDist = 300 -- Aumentamos el rango a 300 studs
+    local mouse = LocalPlayer:GetMouse()
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not myRoot then return nil end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local root = p.Character.HumanoidRootPart
+            local dist = (myRoot.Position - root.Position).Magnitude
+            
+            -- Prioriza al que esté más cerca de tu mouse o de tu cuerpo
+            if dist < maxDist then
+                closest = root
+                maxDist = dist
+            end
+        end
+    end
+    return closest
+end
 
 mt.__namecall = newcclosure(function(self, ...)
     local args = {...}
     local method = getnamecallmethod()
 
-    -- Detectamos si estás lanzando el cuchillo y si el botón está prendido
-    if method == "FireServer" and self.Name == "Throw" and getgenv().KnifeAura_Active then
-        local target = GetNearestPlayer()
-        if target then
-            -- 1. Calculamos dónde va a estar el enemigo (Predicción YARHM)
-            local prediction = target.Position + (target.AssemblyLinearVelocity * 0.18)
-            
-            -- 2. El Origen: Desde tu cabeza hasta la predicción
-            local myHead = LocalPlayer.Character.Head.Position
-            local aimCFrame = CFrame.lookAt(myHead, prediction)
-            
-            -- 3. CAMBIAZO: Reemplazamos tu puntería chueca por la del Aimbot
-            args[1] = aimCFrame -- Dirección perfecta
-            args[2] = 1         -- Fuerza máxima (para que llegue rápido)
-            
-            return old(self, unpack(args))
+    -- Solo activamos si el botón está prendido y es una señal al servidor
+    if method == "FireServer" and getgenv().KnifeAura_Active then
+        
+        -- Verificamos si el evento viene del Cuchillo (Knife)
+        -- Buscamos si el "padre" o el "abuelo" del evento es el cuchillo
+        local isKnifeRemote = (self.Parent and self.Parent.Name == "Knife") or 
+                              (self.Parent and self.Parent.Parent and self.Parent.Parent.Name == "Knife")
+
+        if isKnifeRemote then
+            local target = GetTarget()
+            if target then
+                -- Predicción YARHM (Ajustada a 0.19 para móviles/PC)
+                local vel = target.AssemblyLinearVelocity
+                local predPos = target.Position + (vel * 0.19)
+                
+                -- HACKEO INTELIGENTE:
+                -- Revisamos los argumentos. Si vemos un CFrame o Vector3 que parece el destino, lo cambiamos.
+                
+                -- Caso 1: El juego manda 2 CFrames (Origen, Destino) -> Común en MM2 nuevo
+                if typeof(args[2]) == "CFrame" then
+                    args[2] = CFrame.new(predPos)
+                    
+                -- Caso 2: El juego manda Vector3 (Destino) -> Común en MM2 viejo
+                elseif typeof(args[2]) == "Vector3" then
+                    args[2] = predPos
+                    
+                -- Caso 3: A veces el destino es el argumento 1 (Raro, pero pasa)
+                elseif typeof(args[1]) == "Vector3" then
+                    args[1] = predPos
+                end
+                
+                -- Mensaje en consola (F9) para confirmar que disparó
+                print("Silent Aim: Cuchillo redirigido a " .. target.Parent.Name)
+                
+                return old(self, unpack(args))
+            end
         end
     end
 
