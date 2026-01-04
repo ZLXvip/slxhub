@@ -1151,6 +1151,59 @@ task.spawn(function()
     end
 end)
 
+--// AIM ASSIST BRUTAL (TIPO YARHM LEGIT) //--
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local function GetTarget()
+    local closest = nil
+    local maxDist = 300 -- Rango alto
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local root = p.Character.HumanoidRootPart
+            local dist = (myRoot.Position - root.Position).Magnitude
+            if dist < maxDist then
+                closest = root
+                maxDist = dist
+            end
+        end
+    end
+    return closest
+end
+
+-- BUCLE RÁPIDO: SI TIENES CUCHILLO, APUNTA SOLO
+RunService.RenderStepped:Connect(function()
+    -- Solo si el botón está prendido
+    if getgenv().KnifeAura_Active then
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        -- Verificar si tienes el cuchillo equipado
+        local knife = char:FindFirstChild("Knife")
+        if knife then
+            local target = GetTarget()
+            if target then
+                -- Predicción para que no falles si corre
+                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.16)
+                
+                -- SI ESTÁS APRETANDO EL CLICK O TOCANDO LA PANTALLA (Disparando)
+                local isClicking = game:GetService("UserInputService"):IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or game:GetService("UserInputService").TouchEnabled 
+                
+                -- OJO: Si estás en móvil, esto apuntará siempre que tengas el cuchillo
+                -- Si estás en PC, solo cuando des click.
+                
+                -- Forzamos la cámara a mirar al enemigo
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, prediction)
+            end
+        end
+    end
+end)
+
 --// BUCLE DE AUTO TP: VIGILA LA PISTOLA TODO EL TIEMPO //--
 task.spawn(function()
     while true do
