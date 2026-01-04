@@ -1151,42 +1151,56 @@ task.spawn(function()
     end
 end)
 
---// SILENT AIM DEFINITIVO (BASADO EN YARHM LÍNEAS 769-781) //--
+--// SILENT AIM V4: MÉTODO "SOLO DESTINO" (ANTI-RESETEO) //--
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 local mt = getrawmetatable(game)
 local old = mt.__namecall
 setreadonly(mt, false)
+
+-- Función de búsqueda mejorada (Rango 300)
+local function GetTarget()
+    local closest = nil
+    local maxDist = 300
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not myRoot then return nil end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local root = p.Character.HumanoidRootPart
+            local dist = (myRoot.Position - root.Position).Magnitude
+            if dist < maxDist then
+                closest = root
+                maxDist = dist
+            end
+        end
+    end
+    return closest
+end
 
 mt.__namecall = newcclosure(function(self, ...)
     local args = {...}
     local method = getnamecallmethod()
 
-    -- Solo entra si disparas al servidor y el botón está prendido
+    -- Solo intervenimos si disparas y está prendido
     if method == "FireServer" and getgenv().KnifeAura_Active then
-        
-        -- Detectamos si es el evento de lanzar (YARHM usa "KnifeThrown")
-        if self.Name == "KnifeThrown" or self.Name == "Throw" then
+        if self.Name == "Throw" or self.Name == "KnifeThrown" then
+            local target = GetTarget()
             
-            local target = GetNearestPlayer() -- Tu función de búsqueda
+            -- Si hay objetivo, hacemos la magia
             if target then
-                -- 1. PREDICCIÓN YARHM (Línea 431 del archivo)
-                -- Usan 0.18 de base + la velocidad del enemigo
-                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.18)
+                -- Predicción suave (0.16 para que no falle)
+                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.16)
                 
-                -- 2. EL FIX MAESTRO: LLENAR LOS 2 ARGUMENTOS OBLIGATORIOS
-                local char = LocalPlayer.Character
-                local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+                -- AQUÍ ESTÁ EL TRUCO PARA QUE NO SE RESETEE:
+                -- No tocamos args[1] (Origen). Dejamos que el juego ponga tu mano.
+                -- Solo cambiamos args[2] (Destino).
                 
-                if hand then
-                    -- ARGUMENTO 1: ORIGEN (Tu mano) - Debe ser CFrame
-                    args[1] = CFrame.new(hand.Position)
-                    
-                    -- ARGUMENTO 2: DESTINO (Enemigo) - Debe ser CFrame
-                    -- Si no lo pones como CFrame.new(), el juego no lo lee
-                    args[2] = CFrame.new(prediction)
-                    
-                    -- ¡FUEGO!
-                    return old(self, unpack(args))
-                end
+                -- Forzamos CFrame porque MM2 lo exige
+                args[2] = CFrame.new(prediction)
+                
+                return old(self, unpack(args))
             end
         end
     end
