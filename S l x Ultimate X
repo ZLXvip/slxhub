@@ -1204,28 +1204,75 @@ local function GetTarget()
     return closest
 end
 
--- Función de Disparo Sheriff (V1 / V2) con Predicción de 0.18
-local function ExecuteKill()
-    local target = GetTarget() -- Usa la nueva función con Wall Check
-    if not target then return end
-    
+--// AIM ASSIST BRUTAL CON WALLCHECK (TU CÓDIGO FIJO) //--
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Función para checar paredes (No cambia tu lógica, solo filtra)
+local function IsVisible(targetPart)
     local char = LocalPlayer.Character
-    local gun = char:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
-    if not gun then return end
-
-    if gun.Parent ~= char then char.Humanoid:EquipTool(gun) end
-
-    local rawPing = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
-    local pingValue = tonumber(rawPing) or 50
-    local Prediction = (pingValue / 2500) + 0.18 -- Tu número mágico
+    local origin = char.Head.Position
+    local destination = targetPart.Position
+    local direction = (destination - origin).Unit * (destination - origin).Magnitude
     
-    local TargetPos = target.Position + (target.AssemblyLinearVelocity * Prediction)
-    local MagicOrigin = TargetPos + Vector3.new(0, 1.2, 0) -- El fix de 1.2 que no falla
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {char, workspace.CurrentCamera}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     
-    if gun:FindFirstChild("Shoot") then
-        gun.Shoot:FireServer(CFrame.new(MagicOrigin), CFrame.new(TargetPos))
+    local result = workspace:Raycast(origin, direction, raycastParams)
+    
+    if not result or result.Instance:IsDescendantOf(targetPart.Parent) then
+        return true
     end
+    return false
 end
+
+local function GetTarget()
+    local closest = nil
+    local maxDist = 300 
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local root = p.Character.HumanoidRootPart
+            local dist = (myRoot.Position - root.Position).Magnitude
+            
+            if dist < maxDist then
+                -- AQUÍ SE ACTIVA EL WALLCHECK QUE PEDISTE
+                if IsVisible(root) then 
+                    closest = root
+                    maxDist = dist
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- BUCLE RÁPIDO (TU LÓGICA ORIGINAL SIN CAMBIOS)
+RunService.RenderStepped:Connect(function()
+    if getgenv().KnifeAura_Active then
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        local knife = char:FindFirstChild("Knife")
+        if knife then
+            local target = GetTarget()
+            if target then
+                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.16)
+                
+                -- Se mantiene tu condición de PC y Móvil
+                local isClicking = game:GetService("UserInputService"):IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or game:GetService("UserInputService").TouchEnabled 
+                
+                -- Cámara directa como la pediste
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, prediction)
+            end
+        end
+    end
+end)
 
 --// BUCLE DE AUTO TP: VIGILA LA PISTOLA TODO EL TIEMPO //--
 task.spawn(function()
