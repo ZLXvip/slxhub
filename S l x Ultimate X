@@ -1151,99 +1151,47 @@ task.spawn(function()
     end
 end)
 
---// SILENT AIM UNIVERSAL (PARA CUCHILLO) //--
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+--// SILENT AIM DEFINITIVO (BASADO EN YARHM LÍNEAS 769-781) //--
 local mt = getrawmetatable(game)
 local old = mt.__namecall
 setreadonly(mt, false)
-
--- Función para encontrar al enemigo (La misma de antes, asegurada)
-local function GetTarget()
-    local closest = nil
-    local maxDist = 300 -- Aumentamos el rango a 300 studs
-    local mouse = LocalPlayer:GetMouse()
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    
-    if not myRoot then return nil end
-
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            local root = p.Character.HumanoidRootPart
-            local dist = (myRoot.Position - root.Position).Magnitude
-            
-            -- Prioriza al que esté más cerca de tu mouse o de tu cuerpo
-            if dist < maxDist then
-                closest = root
-                maxDist = dist
-            end
-        end
-    end
-    return closest
-end
 
 mt.__namecall = newcclosure(function(self, ...)
     local args = {...}
     local method = getnamecallmethod()
 
-    -- Solo activamos si el botón está prendido y es una señal al servidor
+    -- Solo entra si disparas al servidor y el botón está prendido
     if method == "FireServer" and getgenv().KnifeAura_Active then
         
-        -- Verificamos si el evento viene del Cuchillo (Knife)
-        -- Buscamos si el "padre" o el "abuelo" del evento es el cuchillo
-        local isKnifeRemote = (self.Parent and self.Parent.Name == "Knife") or 
-                              (self.Parent and self.Parent.Parent and self.Parent.Parent.Name == "Knife")
-
-        if isKnifeRemote then
-            local target = GetTarget()
+        -- Detectamos si es el evento de lanzar (YARHM usa "KnifeThrown")
+        if self.Name == "KnifeThrown" or self.Name == "Throw" then
+            
+            local target = GetNearestPlayer() -- Tu función de búsqueda
             if target then
-                -- Predicción YARHM (Ajustada a 0.19 para móviles/PC)
-                local vel = target.AssemblyLinearVelocity
-                local predPos = target.Position + (vel * 0.19)
+                -- 1. PREDICCIÓN YARHM (Línea 431 del archivo)
+                -- Usan 0.18 de base + la velocidad del enemigo
+                local prediction = target.Position + (target.AssemblyLinearVelocity * 0.18)
                 
-                -- HACKEO INTELIGENTE:
-                -- Revisamos los argumentos. Si vemos un CFrame o Vector3 que parece el destino, lo cambiamos.
+                -- 2. EL FIX MAESTRO: LLENAR LOS 2 ARGUMENTOS OBLIGATORIOS
+                local char = LocalPlayer.Character
+                local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
                 
-                -- Caso 1: El juego manda 2 CFrames (Origen, Destino) -> Común en MM2 nuevo
-                if typeof(args[2]) == "CFrame" then
-                    args[2] = CFrame.new(predPos)
+                if hand then
+                    -- ARGUMENTO 1: ORIGEN (Tu mano) - Debe ser CFrame
+                    args[1] = CFrame.new(hand.Position)
                     
-                -- Caso 2: El juego manda Vector3 (Destino) -> Común en MM2 viejo
-                elseif typeof(args[2]) == "Vector3" then
-                    args[2] = predPos
+                    -- ARGUMENTO 2: DESTINO (Enemigo) - Debe ser CFrame
+                    -- Si no lo pones como CFrame.new(), el juego no lo lee
+                    args[2] = CFrame.new(prediction)
                     
-                -- Caso 3: A veces el destino es el argumento 1 (Raro, pero pasa)
-                elseif typeof(args[1]) == "Vector3" then
-                    args[1] = predPos
+                    -- ¡FUEGO!
+                    return old(self, unpack(args))
                 end
-                
-                -- Mensaje en consola (F9) para confirmar que disparó
-                print("Silent Aim: Cuchillo redirigido a " .. target.Parent.Name)
-                
-                return old(self, unpack(args))
             end
         end
     end
 
     return old(self, ...)
-end)
-
---// BUCLE DE AUTO TP: VIGILA LA PISTOLA TODO EL TIEMPO //--
-task.spawn(function()
-    while true do
-        task.wait(0.5) -- Revisa 2 veces por segundo para no dar lag
-        if getgenv().AutoTPGun_Active then
-            -- Usamos la búsqueda de YARHM
-            local gunDrop = Workspace:FindFirstChild("GunDrop", true) or Workspace:FindFirstChild("PistolDrop", true)
-            
-            if gunDrop then
-                ManualTPGun() -- Llama al "cerebro" que ya tenemos arriba
-                
-                -- Esperamos 5 segundos después de recogerla para que no bugee el TP
-                task.wait(5) 
-            end
-        end
-    end
 end)
 
 -- [DETECTOR DE DISPARO POR TAP ÚNICO AL FINAL]
