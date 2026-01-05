@@ -891,6 +891,7 @@ end)
 
 -- 👇 [AQUÍ PEGAS EL NUEVO BOTÓN] 👇
 CreateNeoToggle(Pages["Farm"], "Auto Kill (Murder Only)")
+CreateNeoToggle(Pages["Farm"], "Auto Kill (Sheriff Only)")
 
 --// BOTÓN DE MINIMIZAR (MODIFICADO CON TU LOGO) //--
 local ASSET_ID = "94561335572570" -- Tu ID Maestro
