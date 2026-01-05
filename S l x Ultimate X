@@ -845,6 +845,18 @@ CreateNeoToggle(Pages["Combat"], "Auto Shoot")
 
 
 CreateNeoToggle(Pages["Combat"], "Tp Shoot ☃️")
+-- [ Combat V2 - For murder ]
+
+CreateNeoToggle(Pages["Combat"], "")
+CreateNeoToggle(Pages["Combat"], "")
+
+
+CreateNeoToggle(Pages["Combat"], "")
+CreateNeoToggle(Pages["Combat"], "")
+
+
+CreateNeoToggle(Pages["Combat"], "")
+CreateNeoToggle(Pages["Combat"], "")
 
 
 -- [ Render For ESP ]
