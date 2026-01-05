@@ -480,7 +480,6 @@ local function ToggleMobileButton(text)
     -- ESTO ES LO QUE DEBE HACER EL BOTÓN 👇
     QuickBtn.MouseButton1Click:Connect(function() 
         PlayAudio(9119720940); 
-        AnimateClick(QuickBtn); 
         if text == "Shoot" then 
             ExecuteKill() -- Llamada directa a la función wallbang
         end 
