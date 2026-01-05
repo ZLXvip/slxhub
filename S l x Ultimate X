@@ -830,11 +830,6 @@ CreateNeoToggle(Pages["Combat"], "Shoot V2")
 CreateNeoToggle(Pages["Combat"], "Tp gun 🔫")
 CreateNeoToggle(Pages["Combat"], "Auto Tp Gun")
 
-CreateNeoToggle(Pages["Combat"], "Knife Aura⚡")
-CreateNeoToggle(Pages["Combat"], "Kill For All - murder")
-
-CreateNeoToggle(Pages["Combat"], "Kill For sheriff - murder🌪️")
-
 
 CreateNeoToggle(Pages["Combat"], "Fling for murder🧑‍💻")
 CreateNeoToggle(Pages["Combat"], "Fling for sheriff")
@@ -847,16 +842,16 @@ CreateNeoToggle(Pages["Combat"], "Auto Shoot")
 CreateNeoToggle(Pages["Combat"], "Tp Shoot ☃️")
 -- [ Combat V2 - For murder ]
 
-CreateNeoToggle(Pages["Combat"], "")
-CreateNeoToggle(Pages["Combat"], "")
+CreateNeoToggle(Pages["Combat V2"], "Knife Aura⚡")
+CreateNeoToggle(Pages["Combat V2"], "Kill For All - murder")
 
 
-CreateNeoToggle(Pages["Combat"], "")
-CreateNeoToggle(Pages["Combat"], "")
+CreateNeoToggle(Pages["Combat V2"], "Kill For sheriff - murder🌪️")
+CreateNeoToggle(Pages["Combat V2"], "")
 
 
-CreateNeoToggle(Pages["Combat"], "")
-CreateNeoToggle(Pages["Combat"], "")
+CreateNeoToggle(Pages["Combat V2"], "")
+CreateNeoToggle(Pages["Combat V2"], "")
 
 
 -- [ Render For ESP ]
