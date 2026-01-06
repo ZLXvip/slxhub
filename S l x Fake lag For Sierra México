@@ -1,0 +1,422 @@
+-- ==============================================================================
+-- SLX HUB Exploit Edition (v7.6 - GHOST KILL + FULLBRIGHT)
+-- GARANTÍA DEV-FORCE: Sliders (1-100), Filtros Sit y Lógica INTACTOS.
+-- ==============================================================================
+
+-- 1. ESTRUCTURA DE DATOS DE ESTADO Y SERVICIOS
+-- ==============================================================================
+
+local State = {
+    Noclip = false, 
+    ESPOn = false, 
+    HitboxScale = 3,         
+    Speed = 16,              
+    ESPTags = {}, 
+    Input = {},              
+    AntiCheatMonitor = false, 
+    HitboxEnabled = true, 
+    TPKillEnabled = false, 
+    TeamCheckEnabled = false, 
+    FullBright = false,
+    GhostKill = false, -- [INYECCIÓN] Estado Ghost Kill
+}
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local Camera = workspace.CurrentCamera
+local CoreGui = game:GetService("CoreGui")
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- [INYECCIÓN] Respaldo de iluminación original
+local OriginalLighting = {
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    GlobalShadows = Lighting.GlobalShadows
+}
+
+-- [INYECCIÓN] El Fantasma del Ghost Kill
+local Ghost = Instance.new("Part")
+Ghost.Name = "FakeLagGhost"
+Ghost.Size = Vector3.new(2, 5, 1)
+Ghost.Anchored = true
+Ghost.CanCollide = false
+Ghost.Transparency = 1 -- Empieza invisible
+Ghost.Color = Color3.fromRGB(255, 0, 0)
+Ghost.Parent = workspace
+
+-- [INYECCIÓN] Lógica Ghost Kill
+local function updateGhostKill()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if State.GhostKill then
+        Ghost.Transparency = 0.5
+        if hrp then
+            Ghost.CFrame = hrp.CFrame
+            settings().Network.IncomingReplicationLag = 1000 -- Bloqueo de Red
+        end
+    else
+        Ghost.Transparency = 1
+        Ghost.Position = Vector3.new(0, -100, 0)
+        settings().Network.IncomingReplicationLag = 0 -- Reconexión y descarga de daño
+    end
+end
+
+-- [INYECCIÓN] Función de control de Brillo
+local function updateFullBright()
+    if State.FullBright then
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.GlobalShadows = false
+    else
+        Lighting.Ambient = OriginalLighting.Ambient
+        Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+        Lighting.Brightness = OriginalLighting.Brightness
+        Lighting.ClockTime = OriginalLighting.ClockTime
+        Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+    end
+end
+
+Lighting.Changed:Connect(function()
+    if State.FullBright then updateFullBright() end
+end)
+
+-- CONSTANTES
+local ESP_POLLER_INTERVAL = 0.2
+
+local function getCharacter(pl) return pl.Character or pl.CharacterAdded:Wait() end
+local function getHRP(char) return char and char:FindFirstChild("HumanoidRootPart") end
+
+-- ** FUNCIÓN MEJORADA: MENSAJE DE ACTIVACIÓN 100% LOCAL (V7.3) **
+local function showActivationMessage()
+    local messageGui = Instance.new("ScreenGui")
+    messageGui.Name = "LocalActivationMessage"
+    messageGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    messageGui.Parent = PlayerGui
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(0, 350, 0, 25)
+    TextLabel.Position = UDim2.new(0.01, 0, 1, -120)
+    TextLabel.BackgroundTransparency = 0.8
+    TextLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    TextLabel.Text = "⚡ S l x H U B ⚡ v7.6 | GHOST KILL READY."
+    TextLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    TextLabel.Font = Enum.Font.SourceSansBold
+    TextLabel.TextSize = 18
+    TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TextLabel.TextWrapped = true
+    TextLabel.Parent = messageGui
+    
+    delay(5, function()
+        if messageGui.Parent then messageGui:Destroy() end
+    end)
+end
+
+-- ==============================================================================
+-- 2. MÓDULO DE INTERFAZ DE USUARIO NATIVA (NATIVE UI BUILD & CONTROL)
+-- ==============================================================================
+
+local WINDOW_WIDTH = 250
+local FULL_HEIGHT = 450 -- [AJUSTE] Altura para nuevo botón
+local MINIMIZED_HEIGHT = 30
+
+local UI = Instance.new("ScreenGui")
+UI.Name = "NativeSlxHub"
+UI.Parent = CoreGui
+UI.ZIndexBehavior = Enum.ZIndexBehavior.Global
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, WINDOW_WIDTH, 0, FULL_HEIGHT)
+MainFrame.Position = UDim2.new(0.5, -WINDOW_WIDTH / 2, 0.5, -FULL_HEIGHT / 2 + 30)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 1
+MainFrame.Parent = UI
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, MINIMIZED_HEIGHT) 
+Title.Text = "⚡ S l x H u b v7.6" 
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSans
+Title.BackgroundTransparency = 0.9
+Title.TextSize = 18
+Title.Parent = MainFrame
+
+local ControlsFrame = Instance.new("Frame")
+ControlsFrame.Size = UDim2.new(1, 0, 1, -MINIMIZED_HEIGHT)
+ControlsFrame.Position = UDim2.new(0, 0, 0, MINIMIZED_HEIGHT)
+ControlsFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+ControlsFrame.BorderSizePixel = 0
+ControlsFrame.Parent = MainFrame
+
+local Layout = Instance.new("UIListLayout")
+Layout.Padding = UDim.new(0, 5)
+Layout.FillDirection = Enum.FillDirection.Vertical
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Layout.Parent = ControlsFrame
+
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 30, 0, MINIMIZED_HEIGHT)
+MinimizeButton.Position = UDim2.new(1, -30, 0, 0)
+MinimizeButton.Text = "—" 
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MinimizeButton.Font = Enum.Font.SourceSans
+MinimizeButton.TextSize = 20
+MinimizeButton.Parent = Title
+
+local isMinimized = false
+MinimizeButton.MouseButton1Click:Connect(function()
+    if isMinimized then
+        MainFrame:TweenSize(UDim2.new(0, WINDOW_WIDTH, 0, FULL_HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        ControlsFrame.Visible = true
+        MinimizeButton.Text = "—"
+        isMinimized = false
+    else
+        ControlsFrame.Visible = false
+        MainFrame:TweenSize(UDim2.new(0, WINDOW_WIDTH, 0, MINIMIZED_HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        MinimizeButton.Text = "☐" 
+        isMinimized = true
+    end
+end)
+
+local isDragging = false
+local dragStartPos = Vector2.zero
+local dragStartFramePos = UDim2.new()
+
+Title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDragging = true
+        dragStartPos = input.Position
+        dragStartFramePos = MainFrame.Position
+        input.Handled = true
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStartPos
+        MainFrame.Position = UDim2.new(0, dragStartFramePos.X.Offset + delta.X, 0, dragStartFramePos.Y.Offset + delta.Y)
+        input.Handled = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isDragging = false end
+end)
+
+-- === FUNCIONES AUXILIARES ESP & HITBOX (TUYAS INTACTAS) ===
+local function removeNameTag(pl)
+    if State.ESPTags[pl] and State.ESPTags[pl].Parent then State.ESPTags[pl]:Destroy() end
+    State.ESPTags[pl] = nil 
+end
+
+local function createNameTag(pl)
+    local char = pl.Character 
+    if not char then return end 
+    removeNameTag(pl) 
+    local rootPart = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart", 5)
+    if not rootPart then return end
+    local billboard = Instance.new("BillboardGui", rootPart)
+    billboard.Size = UDim2.fromOffset(120,30)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 5000 
+    local label = Instance.new("TextLabel", billboard)
+    label.Size = UDim2.new(1,0,1,0)
+    label.BackgroundTransparency = 0.5
+    label.Text = pl.Name 
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255,255,255)
+    State.ESPTags[pl] = billboard 
+end
+
+local function handleESPToggle(isNowOn)
+    if isNowOn then for _, pl in ipairs(Players:GetPlayers()) do if pl ~= LocalPlayer and pl.Character then createNameTag(pl) end end
+    else for _, pl in ipairs(Players:GetPlayers()) do removeNameTag(pl) end end
+end
+
+local function applyHitboxModifications(pl)
+    local scale = State.HitboxScale
+    local char = pl.Character
+    if not char then return end 
+    local head = char:FindFirstChild("Head") 
+    if head then
+        head.Size = Vector3.new(scale, scale, scale)
+        head.Massless = true
+        head.CanCollide = false
+        head.Transparency = 0.5
+        local HitboxExtender = head:FindFirstChild("HitboxExtender") or Instance.new("Part", head)
+        HitboxExtender.Name = "HitboxExtender"
+        HitboxExtender.Shape = Enum.PartType.Cylinder 
+        HitboxExtender.CanCollide = false
+        HitboxExtender.Massless = true
+        HitboxExtender.Anchored = true 
+        HitboxExtender.Size = Vector3.new(scale / 1.5, scale * 1.5, scale / 1.5)
+        HitboxExtender.CFrame = head.CFrame * CFrame.new(0, (head.Size.Y / 2) + (HitboxExtender.Size.Y / 2), 0)
+        HitboxExtender.Transparency = 0.5
+    end
+end
+
+local function cleanHitboxModifications(pl)
+    local char = pl.Character
+    local head = char and char:FindFirstChild("Head") 
+    if head then
+        head.Size = Vector3.new(2,1,1)
+        head.Massless = false
+        head.CanCollide = true
+        head.Transparency = 0
+        if head:FindFirstChild("HitboxExtender") then head.HitboxExtender:Destroy() end
+    end
+end
+
+-- === CONSTRUCCIÓN FINAL DE LA UI ===
+local function createToggle(name, stateVariable, callback)
+    local button = Instance.new("TextButton", ControlsFrame)
+    button.Size = UDim2.new(0.9, 0, 0, 30)
+    button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Font = Enum.Font.SourceSans
+    button.TextSize = 16
+
+    local function updateText(value)
+        button.Text = name .. ": [" .. (value and "ON" or "OFF") .. "]"
+        button.BackgroundColor3 = value and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+    end
+    updateText(State[stateVariable])
+
+    button.MouseButton1Click:Connect(function()
+        State[stateVariable] = not State[stateVariable]
+        updateText(State[stateVariable])
+        if callback then callback() end
+        if stateVariable == "ESPOn" then handleESPToggle(State.ESPOn) end
+    end)
+end
+
+local function createSlider(name, stateVariable, minVal, maxVal, step)
+    local frame = Instance.new("Frame", ControlsFrame)
+    frame.Size = UDim2.new(0.9, 0, 0, 40)
+    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.Position = UDim2.new(0.05, 0, 0, 0)
+    label.Text = name .. ": " .. math.floor(State[stateVariable])
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local function updateValue(value)
+        State[stateVariable] = math.clamp(value, minVal, maxVal)
+        label.Text = name .. ": " .. string.format("%.1f", State[stateVariable])
+    end
+
+    local function createArrowButton(text, xPos, action)
+        local arrow = Instance.new("TextButton", frame)
+        arrow.Size = UDim2.new(0.15, 0, 0.8, 0)
+        arrow.Position = UDim2.new(xPos, 0, 0.1, 0)
+        arrow.Text = text
+        arrow.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        arrow.TextColor3 = Color3.fromRGB(255, 255, 255)
+        arrow.MouseButton1Click:Connect(action)
+    end
+    createArrowButton("-", 0.7, function() updateValue(State[stateVariable] - step) end)
+    createArrowButton("+", 0.85, function() updateValue(State[stateVariable] + step) end)
+end
+
+-- [ORDEN DE BOTONES: TUYO + INYECCIONES]
+createToggle("Noclip", "Noclip")
+createToggle("ESP Tags", "ESPOn")
+createToggle("FullBright", "FullBright", updateFullBright)
+createToggle("Ghost Kill (LAG)", "GhostKill", updateGhostKill) -- [INYECCIÓN]
+createToggle("AntiCheat Monitor", "AntiCheatMonitor")
+createToggle("TP Kill (MASIVO)", "TPKillEnabled")
+createToggle("Team Check (TP Kill)", "TeamCheckEnabled") 
+
+createSlider("Speed", "Speed", 1, 500, 5) 
+createSlider("Hitbox Scale", "HitboxScale", 1, 100, 0.5) 
+
+-- ==============================================================================
+-- 3. MÓDULO DE JUEGO PRINCIPAL (LOGIC CORE)
+-- ==============================================================================
+
+local function monitorPlayer(pl)
+    pl.CharacterAdded:Connect(function(newChar) if State.ESPOn then if newChar:WaitForChild("HumanoidRootPart", 5) then createNameTag(pl) end end end)
+    pl.CharacterRemoving:Connect(function() removeNameTag(pl) cleanHitboxModifications(pl) end)
+    if pl.Character and State.ESPOn then createNameTag(pl) end
+end
+
+Players.PlayerAdded:Connect(function(pl) if pl ~= LocalPlayer then monitorPlayer(pl) end end)
+for _, pl in ipairs(Players:GetPlayers()) do if pl ~= LocalPlayer then monitorPlayer(pl) end end
+
+local lastESPRun = 0
+RunService.Heartbeat:Connect(function(dt)
+    local currentTime = tick()
+    if State.ESPOn and (currentTime - lastESPRun > ESP_POLLER_INTERVAL) then
+        lastESPRun = currentTime
+        for _, pl in ipairs(Players:GetPlayers()) do
+            if pl ~= LocalPlayer and pl.Character then
+                local rootPart = pl.Character:FindFirstChild("HumanoidRootPart")
+                if rootPart and (not State.ESPTags[pl] or not State.ESPTags[pl].Parent) then createNameTag(pl) end
+            end
+        end
+    end
+end)
+
+local function tpAllEnemiesToFront()
+    local char = LocalPlayer.Character
+    local hrp = getHRP(char)
+    if not hrp then return end
+    local targetCFrame = hrp.CFrame + hrp.CFrame.lookVector * 20
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl ~= LocalPlayer and pl.Character then
+            local enemyHRP = getHRP(pl.Character)
+            local enemyHum = pl.Character:FindFirstChildOfClass("Humanoid")
+            if enemyHum and enemyHum.Sit then continue end -- [FILTRO SIT]
+            if State.TeamCheckEnabled and pl.Team == LocalPlayer.Team then continue end
+            if enemyHRP then enemyHRP.CFrame = targetCFrame end
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = State.Speed end
+    
+    if State.Noclip and char then
+        for _,part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide=false end end
+    end
+    
+    if State.TPKillEnabled then tpAllEnemiesToFront() end
+
+    -- [INYECCIÓN] Lógica de Daño Acumulado para Ghost Kill
+    if State.GhostKill and char then
+        local tool = char:FindFirstChildOfClass("Tool")
+        if tool and tool:FindFirstChild("Handle") then
+            for _, pl in ipairs(Players:GetPlayers()) do
+                if pl ~= LocalPlayer and pl.Character then
+                    local eHRP = pl.Character:FindFirstChild("HumanoidRootPart")
+                    if eHRP and (char.HumanoidRootPart.Position - eHRP.Position).Magnitude < 15 then
+                        firetouchinterest(eHRP, tool.Handle, 0)
+                        firetouchinterest(eHRP, tool.Handle, 1)
+                    end
+                end
+            end
+        end
+    end
+
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl ~= LocalPlayer and pl.Character then
+            if State.HitboxEnabled then applyHitboxModifications(pl) else cleanHitboxModifications(pl) end
+        end
+    end
+end)
+
+showActivationMessage()
