@@ -458,6 +458,64 @@ local function ManualTPGun()
     end
 end
 
+--// FUNCIÓN FLING SHERIFF (TP VIOLENTO + REGRESO) //--
+local function FlingSheriff()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    
+    -- 1. BUSCAR AL SHERIFF
+    local sheriff = nil
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and (p.Backpack:FindFirstChild("Gun") or (p.Character and p.Character:FindFirstChild("Gun"))) then
+            sheriff = p
+            break
+        end
+    end
+    
+    -- Si no hay Sheriff, avisamos y cancelamos
+    if not sheriff or not sheriff.Character or not sheriff.Character:FindFirstChild("HumanoidRootPart") then
+         game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX Hub", Text = "No se encontró Sheriff.", Duration = 2})
+         return
+    end
+    
+    local sRoot = sheriff.Character.HumanoidRootPart
+    local oldPos = root.CFrame -- Guardamos donde estabas (ESCALERAS, ETC)
+    
+    -- Aviso de inicio
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX Hub", Text = "FLING ACTIVO! 4 Segundos...", Duration = 2})
+    
+    -- 2. EL BUCLE DE LA MUERTE (4 SEGUNDOS)
+    local t = tick()
+    local connection
+    
+    -- Usamos Heartbeat para que sea más rápido que los frames (TP SPAM)
+    connection = RunService.Heartbeat:Connect(function()
+        -- Si pasaron 4s o el sheriff se fue, cortamos
+        if tick() - t > 4 or not sRoot or not sRoot.Parent then
+            connection:Disconnect()
+            
+            -- FRENAMOS TU PERSONAJE
+            root.Velocity = Vector3.new(0,0,0)
+            root.RotVelocity = Vector3.new(0,0,0)
+            
+            -- TE REGRESAMOS A TU LUGAR SEGURO
+            root.CFrame = oldPos 
+            game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX Hub", Text = "Regreso Seguro Completado.", Duration = 2})
+            return
+        end
+        
+        -- TP DENTRO DEL SHERIFF + GIRO LOCO (ESTO ES EL FLING)
+        root.CFrame = sRoot.CFrame * CFrame.new(0,0,0) * CFrame.Angles(math.random(-100,100), math.random(-100,100), math.random(-100,100))
+        root.Velocity = Vector3.new(10000, 10000, 10000) -- FUERZA INFINITA
+    end)
+    
+    -- Godmode Temporal (Noclip) para que no te atores
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then part.CanCollide = false end
+    end
+end
+
 --// 7. UI SETUP //--
 local THEME = { Background = Color3.fromRGB(10, 10, 18), Sidebar = Color3.fromRGB(15, 15, 25), Header = Color3.fromRGB(15, 15, 25), Accent1 = Color3.fromRGB(0, 255, 255), Accent2 = Color3.fromRGB(85, 0, 255), Text = Color3.fromRGB(240, 240, 240), TextDark = Color3.fromRGB(120, 120, 140), CardBg = Color3.fromRGB(20, 20, 35), FontMain = Enum.Font.GothamBlack, FontBody = Enum.Font.GothamMedium }
 
