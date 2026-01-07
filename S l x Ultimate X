@@ -601,6 +601,109 @@ local function FlingSheriff()
     end
 end
 
+--// 🔫 AUTO SHOOT INTELIGENTE (USA ROLE CACHE + WALLCHECK) //--
+getgenv().AutoShoot_Active = false
+getgenv().IsShooting = false -- Para que no se bugee intentando disparar 2 veces
+
+-- Función de Visibilidad (WallCheck)
+local function CheckWall(targetRoot)
+    local char = LocalPlayer.Character
+    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+    if not myRoot or not targetRoot then return false end
+
+    -- Trazamos una línea desde tu pecho hasta el del Murder
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {char, Workspace.CurrentCamera} -- Ignoramos tu cuerpo y la cámara
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local direction = (targetRoot.Position - myRoot.Position)
+    local result = Workspace:Raycast(myRoot.Position, direction, params)
+
+    -- Si el rayo choca con el Murder o no choca con nada (aire), hay tiro limpio
+    if result then
+        if result.Instance:IsDescendantOf(targetRoot.Parent) then
+            return true -- ¡TIRO LIMPIO!
+        else
+            return false -- Hay una pared estorbando
+        end
+    end
+    return true
+end
+
+-- Bucle Maestro del Auto-Shoot
+task.spawn(function()
+    while true do
+        task.wait(0.1) -- Revisa 10 veces por segundo (Rápido pero sin lag)
+        
+        if getgenv().AutoShoot_Active and not getgenv().IsShooting then
+            -- 1. BUSCAMOS AL MURDER USANDO EL CEREBRO DE ROLES
+            local murder = nil
+            if getgenv().RoleCache then
+                for name, data in pairs(getgenv().RoleCache) do
+                    if data.Role == "Murderer" then
+                        murder = Players:FindFirstChild(name)
+                        break
+                    end
+                end
+            end
+
+            -- 2. VALIDACIONES (Distancia, Vida, Paredes)
+            if murder and murder.Character and murder.Character:FindFirstChild("HumanoidRootPart") then
+                local mRoot = murder.Character.HumanoidRootPart
+                local mHum = murder.Character:FindFirstChild("Humanoid")
+                
+                local char = LocalPlayer.Character
+                local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+                
+                -- Checamos que existamos y estemos vivos
+                if myRoot and mHum and mHum.Health > 0 then
+                    local dist = (myRoot.Position - mRoot.Position).Magnitude
+                    
+                    -- RANGO: Menos de 100 studs y TIRO LIMPIO
+                    if dist < 100 and CheckWall(mRoot) then
+                        
+                        -- 3. BUSCAR PISTOLA (En mano o mochila)
+                        local gun = char:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+                        
+                        if gun then
+                            getgenv().IsShooting = true -- Bloqueamos para no spamear
+                            
+                            -- A) EQUIPAR RÁPIDO
+                            if gun.Parent ~= char then
+                                char.Humanoid:EquipTool(gun)
+                                task.wait(0.1) -- Pequeña espera para que el server registre el equip
+                            end
+                            
+                            -- B) PREDICCIÓN Y DISPARO
+                            local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+                            local prediction = mRoot.Position + (mRoot.Velocity * (ping / 1000 + 0.05))
+                            
+                            -- Disparamos al evento del juego
+                            if gun:FindFirstChild("Shoot") then
+                                gun.Shoot:FireServer(mRoot.CFrame.Position, prediction)
+                                
+                                -- Feedback Visual
+                                game:GetService("StarterGui"):SetCore("SendNotification", {
+                                    Title = "AUTO-SHOOT 🔫",
+                                    Text = "Disparo enviado a: " .. murder.Name,
+                                    Duration = 2
+                                })
+                            end
+                            
+                            -- C) GUARDAR RÁPIDO (Estilo Ninja)
+                            task.wait(0.1)
+                            char.Humanoid:UnequipTools()
+                            
+                            task.wait(1.5) -- Cooldown para no gastar balas a lo tonto
+                            getgenv().IsShooting = false
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
 --// 7. UI SETUP //--
 local THEME = { Background = Color3.fromRGB(10, 10, 18), Sidebar = Color3.fromRGB(15, 15, 25), Header = Color3.fromRGB(15, 15, 25), Accent1 = Color3.fromRGB(0, 255, 255), Accent2 = Color3.fromRGB(85, 0, 255), Text = Color3.fromRGB(240, 240, 240), TextDark = Color3.fromRGB(120, 120, 140), CardBg = Color3.fromRGB(20, 20, 35), FontMain = Enum.Font.GothamBlack, FontBody = Enum.Font.GothamMedium }
 
