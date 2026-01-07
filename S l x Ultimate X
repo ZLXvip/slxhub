@@ -601,56 +601,58 @@ local function FlingSheriff()
     end
 end
 
---// 🔫 AUTO SHOOT V3: MATH & PREDICCION (SIN FALLAS) //--
--- Este sistema usa cálculos vectoriales para asegurar el impacto.
-
-getgenv().AutoShoot_Active = false
-local ShootDebounce = false -- Para no trabar el arma
-
--- 1. CALCULADORA DE TRAYECTORIA (CÁLCULOS WE)
-local function GetShootTrajectory(targetPart)
-    local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
-    local pingNumber = tonumber(string.match(ping, "%d+")) or 50
+--// 👁️ OJO DE DIOS: MOTOR DE PREDICCIÓN FÍSICA //--
+local function GetGodPosition(targetRoot)
+    -- 1. Obtenemos Ping Real
+    local rawPing = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
+    local ping = tonumber(rawPing) or 50
     
-    -- Fórmula: Posición + (Velocidad * (Lag / 1000))
-    -- Esto "adivina" dónde estará el Murder cuando la bala llegue.
-    local prediction = targetPart.Position + (targetPart.AssemblyLinearVelocity * (pingNumber / 1000 + 0.035))
-    return prediction
+    -- 2. La Fórmula Secreta (Ping + Server Tick Offset)
+    -- 0.06 es el retraso promedio del motor de Roblox
+    local predictionTime = (ping / 1000) + 0.06 
+    
+    -- 3. Proyección al Futuro
+    -- Posición Actual + (Velocidad * Tiempo)
+    local futurePos = targetRoot.Position + (targetRoot.AssemblyLinearVelocity * predictionTime)
+    
+    return futurePos
 end
 
--- 2. WALLCHECK MATEMÁTICO (RAYCAST INVISIBLE)
-local function IsPathClear(origin, targetPos)
-    local direction = targetPos - origin
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, workspace.CurrentCamera}
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    rayParams.IgnoreWater = true
+--// WALLCHECK PREDICTIVO (Revisa la línea de fuego futura) //--
+local function IsShotClear(origin, targetPos)
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {LocalPlayer.Character, workspace.CurrentCamera}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.IgnoreWater = true
     
-    local result = workspace:Raycast(origin, direction, rayParams)
+    local direction = targetPos - origin
+    local result = workspace:Raycast(origin, direction, params)
     
     if result then
-        -- Si choca con algo que NO es un jugador, es pared.
+        -- Si chocamos con algo que NO es un Humano, es pared
         if result.Instance.Parent:FindFirstChild("Humanoid") then
-            return true -- Es un jugador (tiro limpio)
+            return true -- Vía libre
         else
-            return false -- Es pared
+            return false -- Pared estorbando en la trayectoria
         end
     end
     return true -- Aire limpio
 end
 
--- 3. BUCLE DE EJECUCIÓN (CORRE 60 VECES POR SEGUNDO)
+--// 🔫 EJECUTOR AUTO-SHOOT V4 //--
+getgenv().AutoShoot_Active = false
+local IsShooting = false
+
 task.spawn(function()
     while true do
-        task.wait() -- Velocidad máxima del motor
+        task.wait() -- Velocidad Máxima (60 checks por segundo)
         
-        if getgenv().AutoShoot_Active and not ShootDebounce then
+        if getgenv().AutoShoot_Active and not IsShooting then
             
-            -- A) BUSCAMOS AL MURDER (Usando tu sistema de roles que ya sirve)
-            local murder = getgenv().CurrentMurder -- Viene del script de roles
-            
-            -- Si el sistema de roles aún no lo detecta, lo buscamos manual por cuchillo
+            -- A) BUSCAR AL MURDER (Usando tu Cerebro de Roles + Backup)
+            local murder = getgenv().CurrentMurder
             if not murder then
+                -- Backup por si el rol falló o entraron tarde
                 for _, p in pairs(Players:GetPlayers()) do
                     if p.Backpack:FindFirstChild("Knife") or (p.Character and p.Character:FindFirstChild("Knife")) then
                         murder = p
@@ -659,57 +661,57 @@ task.spawn(function()
                 end
             end
 
-            -- B) VALIDAMOS SI VALE LA PENA DISPARAR
-            if murder and murder.Character and murder.Character:FindFirstChild("Head") then
-                local mHead = murder.Character.Head
+            -- B) VALIDACIÓN DE TIRO
+            if murder and murder.Character and murder.Character:FindFirstChild("HumanoidRootPart") then
+                local mRoot = murder.Character.HumanoidRootPart
                 local char = LocalPlayer.Character
                 local myRoot = char and char:FindFirstChild("HumanoidRootPart")
                 
-                -- Checamos si tenemos pistola nosotros (Sheriff o Héroe)
+                -- Buscamos pistola (Mochila o Mano)
                 local gun = char:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
                 
                 if myRoot and gun then
-                    local dist = (myRoot.Position - mHead.Position).Magnitude
+                    -- 👁️ CALCULO DEL OJO DE DIOS
+                    local predictedPos = GetGodPosition(mRoot)
+                    local dist = (myRoot.Position - mRoot.Position).Magnitude
                     
-                    -- RANGO: 100 Studs (Tiro seguro)
-                    if dist < 100 then
-                        -- WALLCHECK: ¿Podemos darle?
-                        if IsPathClear(myRoot.Position, mHead.Position) then
+                    -- RANGO: 110 Studs (Aumentado para aprovechar la predicción)
+                    if dist < 110 then
+                        
+                        -- WALLCHECK AL FUTURO
+                        if IsShotClear(myRoot.Position, predictedPos) then
                             
-                            ShootDebounce = true -- Bloqueo
+                            IsShooting = true
                             
-                            -- C) LA SECUENCIA DE DISPARO (RÁPIDA Y FURIOSA)
+                            -- C) SECUENCIA DE DISPARO SIN ERRORES
                             
-                            -- 1. EQUIPAR (Sin animación lenta)
+                            -- 1. Equipar Forzado (Vital para que no se encasquille)
                             if gun.Parent ~= char then
                                 char.Humanoid:EquipTool(gun)
+                                task.wait(0.1) -- Espera técnica obligatoria
                             end
                             
-                            -- 2. CALCULAR
-                            local targetPos = GetShootTrajectory(mHead)
-                            
-                            -- 3. ESPERA TÉCNICA (0.1s es lo mínimo que Roblox pide para registrar el arma)
-                            task.wait(0.15) 
-                            
-                            -- 4. ¡FUEGO! (Directo al servidor)
-                            if gun:FindFirstChild("Shoot") then
-                                -- MM2 pide (Origen, Destino)
-                                gun.Shoot:FireServer(myRoot.Position, targetPos)
-                                
-                                -- Feedback
-                                game:GetService("StarterGui"):SetCore("SendNotification", {
-                                    Title = "💥 DISPARO MATH",
-                                    Text = "Bala enviada a: " .. murder.Name,
-                                    Duration = 1.5
-                                })
+                            -- 2. Validación final
+                            if gun.Parent == char then
+                                -- 3. ¡FUEGO AL FUTURO!
+                                if gun:FindFirstChild("Shoot") then
+                                    gun.Shoot:FireServer(myRoot.Position, predictedPos)
+                                    
+                                    -- Efecto visual
+                                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                                        Title = "👁️ GOD'S EYE",
+                                        Text = "Predicción ejecutada: " .. murder.Name,
+                                        Duration = 1
+                                    })
+                                end
                             end
                             
-                            -- 5. GUARDAR Y ENFRIAR
+                            -- 4. Guardar y Enfriar
                             task.wait(0.2)
                             char.Humanoid:UnequipTools()
                             
-                            task.wait(1.5) -- Espera para no fallar el siguiente tiro
-                            ShootDebounce = false
+                            task.wait(1.3) -- Cooldown para no gastar balas
+                            IsShooting = false
                         end
                     end
                 end
