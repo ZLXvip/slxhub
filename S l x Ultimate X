@@ -201,10 +201,11 @@ RunService.RenderStepped:Connect(function()
             if not ESP_2D_Active and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart:FindFirstChild("SLX_Box") then 
                 p.Character.HumanoidRootPart.SLX_Box:Destroy() 
             end
-            -- Limpieza Skeleton y Tracer Frame
+            -- Limpieza Skeleton
             if not ESP_Skeleton_Active and SkeletonGUI:FindFirstChild("Skel_"..p.Name) then 
                 SkeletonGUI["Skel_"..p.Name]:Destroy() 
             end
+            -- Limpieza Tracers GUI
             if not ESP_Tracer_Active and SkeletonGUI:FindFirstChild("Tracer_"..p.Name) then 
                 SkeletonGUI["Tracer_"..p.Name]:Destroy() 
             end
@@ -220,23 +221,48 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- [3. ESP JUGADORES - AHORA CON CEREBRO DE ROLES REALES]
+    -- [3. ESP JUGADORES - LÓGICA HÍBRIDA (HERO UPDATE)]
      if ESP_Shadow_Active or ESP_2D_Active or ESP_Skeleton_Active or ESP_Tracer_Active or ESP_Info_Active then
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Head") then
                 
-                -- [[ 🔥 AQUÍ ESTÁ LA NUEVA LÓGICA NIVEL YARHM 🔥 ]] --
-                local role = "Innocent" -- Por defecto
+                -- [[ 🔥 LÓGICA MAESTRA: ROLES + INVENTARIO EN TIEMPO REAL 🔥 ]] --
                 
-                -- 1. Intentamos leer la DATA del servidor (Lo más rápido y seguro)
+                -- 1. Obtenemos datos del "Cerebro" (Quién nació siendo qué)
+                local serverRole = "Innocent"
                 if getgenv().RoleCache and getgenv().RoleCache[p.Name] then
-                    role = getgenv().RoleCache[p.Name].Role -- Devuelve "Murderer", "Sheriff" o "Innocent" directo del sistema
+                    serverRole = getgenv().RoleCache[p.Name].Role 
                 end
 
-                -- Colores basados en el ROL REAL
+                -- 2. Revisamos Inventario (Qué tienen en la mano AHORITA)
+                local hasGun = p.Backpack:FindFirstChild("Gun") or (p.Character and p.Character:FindFirstChild("Gun"))
+                local hasKnife = p.Backpack:FindFirstChild("Knife") or (p.Character and p.Character:FindFirstChild("Knife"))
+
+                -- 3. Decidimos el Color y el Nombre (Aquí está la magia del Héroe)
+                local role = "Innocent"
                 local color = Color3.fromRGB(0, 255, 0) -- Verde (Inocente)
-                if role == "Murderer" then color = Color3.fromRGB(255, 0, 0) -- Rojo
-                elseif role == "Sheriff" then color = Color3.fromRGB(0, 0, 255) end -- Azul
+
+                if hasKnife or serverRole == "Murderer" then
+                    role = "Murderer"
+                    color = Color3.fromRGB(255, 0, 0) -- Rojo
+                
+                elseif hasGun then
+                    -- TIENE LA PISTOLA: ¿Es el original o es un Héroe?
+                    if serverRole == "Sheriff" then
+                        role = "Sheriff"
+                        color = Color3.fromRGB(0, 0, 255) -- Azul (Original)
+                    else
+                        role = "HERO 🔫" -- ¡AQUÍ ESTÁ TU CAMBIO!
+                        color = Color3.fromRGB(255, 255, 0) -- Amarillo (Héroe)
+                    end
+                
+                elseif serverRole == "Sheriff" then
+                    -- Era el Sheriff pero NO tiene la pistola (La tiró o murió)
+                    role = "Sheriff (Dead)"
+                    color = Color3.fromRGB(0, 0, 255) -- Se queda azul para saber quién murió
+                end
+
+                -- A PARTIR DE AQUÍ TODO SE DIBUJA CON EL COLOR QUE ELEGIMOS ARRIBA 👇
                 
                 -- SHADOW
                 if ESP_Shadow_Active then
@@ -281,39 +307,18 @@ RunService.RenderStepped:Connect(function()
                     else for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end end
                 end
 
--- [TRACERS 3D (BEAMS) - FIX DE VISIBILIDAD]
+                -- TRACERS (BEAMS)
                 if ESP_Tracer_Active then
                     local enemyRoot = p.Character.HumanoidRootPart
                     local myChar = LocalPlayer.Character
                     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
                     if enemyRoot and myRoot then
-                        -- 1. Crear Attachment en Enemigo si no existe
-                        local att = enemyRoot:FindFirstChild("SLX_Att")
-                        if not att then
-                            att = Instance.new("Attachment", enemyRoot)
-                            att.Name = "SLX_Att"
-                        end
-                        
-                        -- 2. Crear Beam si no existe
+                        local att = enemyRoot:FindFirstChild("SLX_Att") or Instance.new("Attachment", enemyRoot); att.Name = "SLX_Att"
                         local beam = enemyRoot:FindFirstChild("SLX_Beam")
-                        if not beam then
-                            beam = Instance.new("Beam", enemyRoot)
-                            beam.Name = "SLX_Beam"
-                            beam.FaceCamera = true
-                            beam.Width0 = 0.03
-                            beam.Width1 = 0.05
-                            beam.Transparency = NumberSequence.new(0.1)
-                        end
-
-                        -- 3. Crear Attachment en MI Torso si no existe
-                        local myAtt = myRoot:FindFirstChild("SLX_MyAtt")
-                        if not myAtt then
-                            myAtt = Instance.new("Attachment", myRoot)
-                            myAtt.Name = "SLX_MyAtt"
-                        end
-
-                        -- 4. Conectar Beam
+                        if not beam then beam = Instance.new("Beam", enemyRoot); beam.Name = "SLX_Beam"; beam.FaceCamera = true; beam.Width0 = 0.03; beam.Width1 = 0.05; beam.Transparency = NumberSequence.new(0.1) end
+                        local myAtt = myRoot:FindFirstChild("SLX_MyAtt") or Instance.new("Attachment", myRoot); myAtt.Name = "SLX_MyAtt"
+                        
                         beam.Attachment0 = myAtt
                         beam.Attachment1 = att
                         beam.Color = ColorSequence.new(color)
@@ -321,8 +326,7 @@ RunService.RenderStepped:Connect(function()
                     end
                 end
                 
--- PEGA AQUÍ EL BLOQUE DE NOMBRES 👇
-                -- [ESP INFO: NOMBRE + DISTANCIA + ROL]
+                -- [ESP INFO: NOMBRE + DISTANCIA + ROL (ACTUALIZADO)]
                 if ESP_Info_Active then
                     local head = p.Character:FindFirstChild("Head")
                     if head then
@@ -354,8 +358,7 @@ RunService.RenderStepped:Connect(function()
                         p.Character.Head.SLX_Info:Destroy()
                     end
                 end
-                -- 👆 FIN DEL BLOQUE QUE PEGASTE
-
+                
             end -- Cierra el if p ~= LocalPlayer
         end -- Cierra el for loop (LA FIESTA)
     end -- Cierra el if ESP_Active...
