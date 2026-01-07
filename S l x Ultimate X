@@ -458,107 +458,115 @@ local function ManualTPGun()
     end
 end
 
---// SISTEMA OMNISCIENTE (DETECTA ROLES EN EL PRIMER FRAME) //--
-local RoleCache = {} -- Aquí guardamos quién es quién
-local Connections = {} -- Los cables espías
+--// ⚡ SISTEMA DE ROLES MM2 (ENGINE DETECTION) //--
+-- Este sistema no busca items, vigila la ASIGNACIÓN DE IDENTIDAD del servidor.
 
--- Función para limpiar basura de la ronda anterior
-local function ClearRoundData()
-    for _, conn in pairs(Connections) do
-        if conn then conn:Disconnect() end
-    end
-    table.clear(Connections)
-    table.clear(RoleCache)
-    getgenv().SheriffFound = false
-end
+local RoleService = {} 
+getgenv().CurrentSheriff = nil
+getgenv().CurrentMurder = nil
 
--- LA FUNCIÓN DE FLING (Ya la conoces, pero optimizada)
-local function InstantFling(target)
-    if getgenv().SheriffFound then return end -- Si ya lo agarramos, no repetimos
-    getgenv().SheriffFound = true
+-- Lógica de Fling (La acción violenta)
+local function ExecuteRoleFling(targetPlayer)
+    if not targetPlayer then return end
+    
+    -- Notificación de Élite
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "🕵️ ROL DETECTADO",
+        Text = "Objetivo Identificado: " .. targetPlayer.Name,
+        Duration = 5,
+        Icon = "rbxassetid://13366572778" -- Icono de alerta
+    })
 
     local char = LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    local sChar = target.Character
-    local sRoot = sChar and sChar:FindFirstChild("HumanoidRootPart")
+    local targetChar = targetPlayer.Character
+    local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
 
-    if not root or not sRoot then return end
+    if not root or not targetRoot then return end
 
-    -- NOTIFICACIÓN DE HACKER: LEÍMOS EL RANGO ANTES DE TIEMPO
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "⚡ RANGO DETECTADO", 
-        Text = "Sheriff: " .. target.Name .. " (Fling Inmediato)", 
-        Duration = 5
-    })
-
-    local oldPos = root.CFrame
+    local safePos = root.CFrame -- Guardamos base
     local t = tick()
     
-    -- NOCLIP DE EMERGENCIA
-    local noclip = RunService.Stepped:Connect(function()
-        if char then for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
+    -- Activar "Modo Fantasma" (Noclip)
+    local ghost = RunService.Stepped:Connect(function()
+        if char then 
+            for _, part in pairs(char:GetDescendants()) do 
+                if part:IsA("BasePart") then part.CanCollide = false end 
+            end 
+        end
     end)
 
-    -- ATAQUE DE 4 SEGUNDOS
-    local connection = RunService.Heartbeat:Connect(function()
-        if tick() - t > 4 or not sRoot.Parent then
-            connection:Disconnect()
-            noclip:Disconnect()
-            root.Velocity = Vector3.zero
+    -- Ejecutar Fling
+    local assault = RunService.Heartbeat:Connect(function()
+        if tick() - t > 4 or not targetRoot.Parent then
+            ghost:Disconnect()
+            -- Parar en seco
+            root.Velocity = Vector3.zero 
             root.RotVelocity = Vector3.zero
-            root.CFrame = oldPos
+            root.CFrame = safePos -- Regreso
             return
         end
-        -- FLING VIOLENTO
-        root.CFrame = sRoot.CFrame * CFrame.Angles(math.random(-20,20), math.random(-20,20), math.random(-20,20))
+        
+        -- Física de Ataque
+        root.CFrame = targetRoot.CFrame * CFrame.Angles(math.random(-10,10), math.random(-10,10), math.random(-10,10))
         root.Velocity = Vector3.new(10000, 10000, 10000)
+    end)
+    
+    -- Desconectar ataque al terminar
+    task.delay(4.1, function() 
+        if assault then assault:Disconnect() end
     end)
 end
 
---// EL ESPÍA DEL CONTADOR (ESTO ES LO QUE PEDISTE) //--
--- Este código se mete en cada jugador DESDE AHORITA y espera el dato del Rango.
-local function StartRoleSpy()
-    ClearRoundData() -- Limpiamos memoria
-    
-    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX", Text = "Espiando Roles (Esperando Round)...", Duration = 3})
+--// EL CEREBRO DETECTOR (MONITOR DE ROLES) //--
+local function StartRoleMonitor()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Z SLX | Monitor Activo",
+        Text = "Esperando que el servidor asigne Roles...",
+        Duration = 3
+    })
 
-    -- Conectamos a TODOS los jugadores que existen
+    -- Limpiamos datos viejos
+    getgenv().CurrentSheriff = nil
+    
+    -- Conectamos a TODOS los jugadores en el Lobby
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             
-            -- 1. ESPIAR MOCHILA (BACKPACK)
-            -- En cuanto el server ponga el item, lo sabemos.
-            local bpConn = player.Backpack.ChildAdded:Connect(function(child)
-                if child.Name == "Gun" then
-                    RoleCache[player.Name] = "Sheriff"
-                    InstantFling(player) -- ¡ATACAR AL INSTANTE!
-                elseif child.Name == "Knife" then
-                    RoleCache[player.Name] = "Murderer"
+            -- [TECNOLOGÍA YARHM]
+            -- Usamos ChildAdded en el Backpack porque es la PRIMERA señal del servidor.
+            -- El servidor dice: "Asignar Identidad: Sheriff -> Jugador X".
+            -- Nosotros interceptamos esa señal aquí:
+            
+            local connection = player.Backpack.ChildAdded:Connect(function(IdentityItem)
+                if IdentityItem.Name == "Gun" then
+                    -- ¡EL SERVIDOR LE DIO EL ROL DE SHERIFF!
+                    getgenv().CurrentSheriff = player
+                    ExecuteRoleFling(player) -- ATACAR
+                    connection:Disconnect() -- Ya cumplió, cortamos cable
+                    
+                elseif IdentityItem.Name == "Knife" then
+                    -- ¡EL SERVIDOR LE DIO EL ROL DE MURDER!
+                    getgenv().CurrentMurder = player
                 end
             end)
-            table.insert(Connections, bpConn)
-
-            -- 2. ESPIAR PERSONAJE (CHARACTER)
-            -- A veces aparece en la cintura antes que en la mochila.
+            
+            -- Hacemos lo mismo con el Character por si acaso el server laguea
             if player.Character then
-                local charConn = player.Character.ChildAdded:Connect(function(child)
-                    if child.Name == "Gun" then
-                        RoleCache[player.Name] = "Sheriff"
-                        InstantFling(player)
-                    elseif child.Name == "Knife" then
-                        RoleCache[player.Name] = "Murderer"
+                player.Character.ChildAdded:Connect(function(IdentityItem)
+                    if IdentityItem.Name == "Gun" and not getgenv().CurrentSheriff then
+                        getgenv().CurrentSheriff = player
+                        ExecuteRoleFling(player)
                     end
                 end)
-                table.insert(Connections, charConn)
             end
         end
     end
 end
 
--- ESTO CONECTA EL BOTÓN A LA FUNCIÓN DE ESPÍA
+--// TU BOTÓN LLAMA A ESTO //--
 local function FlingSheriff()
-    -- Solo activamos el espía. Él hará el trabajo sucio cuando empiece la ronda.
-    StartRoleSpy()
+    StartRoleMonitor() -- Inicia la vigilancia
 end
 
 --// 7. UI SETUP //--
