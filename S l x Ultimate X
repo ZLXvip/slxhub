@@ -458,115 +458,118 @@ local function ManualTPGun()
     end
 end
 
---// ⚡ SISTEMA DE ROLES MM2 (ENGINE DETECTION) //--
--- Este sistema no busca items, vigila la ASIGNACIÓN DE IDENTIDAD del servidor.
+--// Z SLX HUB: SISTEMA DE ROLES POR DATA (ENGINE LEVEL) //--
+-- Este script lee la señal "PlayerDataChanged" del servidor. 
+-- Es la forma más rápida y pura de saber quién es quién.
 
-local RoleService = {} 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Variables Maestras (Aquí se guarda quién es quién)
+getgenv().RoleCache = {} 
 getgenv().CurrentSheriff = nil
 getgenv().CurrentMurder = nil
 
--- Lógica de Fling (La acción violenta)
-local function ExecuteRoleFling(targetPlayer)
-    if not targetPlayer then return end
+--// 1. CONEXIÓN AL CEREBRO DEL JUEGO //--
+-- Buscamos el RemoteEvent secreto que usa MM2 para avisar los roles
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local Gameplay = Remotes:WaitForChild("Gameplay")
+local PlayerDataChanged = Gameplay:WaitForChild("PlayerDataChanged")
+
+-- Función para descifrar la data del servidor
+local function UpdateRoles(data)
+    getgenv().RoleCache = data -- Guardamos toda la data cruda por si acaso
     
-    -- Notificación de Élite
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "🕵️ ROL DETECTADO",
-        Text = "Objetivo Identificado: " .. targetPlayer.Name,
-        Duration = 5,
-        Icon = "rbxassetid://13366572778" -- Icono de alerta
-    })
-
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local targetChar = targetPlayer.Character
-    local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
-
-    if not root or not targetRoot then return end
-
-    local safePos = root.CFrame -- Guardamos base
-    local t = tick()
-    
-    -- Activar "Modo Fantasma" (Noclip)
-    local ghost = RunService.Stepped:Connect(function()
-        if char then 
-            for _, part in pairs(char:GetDescendants()) do 
-                if part:IsA("BasePart") then part.CanCollide = false end 
-            end 
-        end
-    end)
-
-    -- Ejecutar Fling
-    local assault = RunService.Heartbeat:Connect(function()
-        if tick() - t > 4 or not targetRoot.Parent then
-            ghost:Disconnect()
-            -- Parar en seco
-            root.Velocity = Vector3.zero 
-            root.RotVelocity = Vector3.zero
-            root.CFrame = safePos -- Regreso
-            return
-        end
-        
-        -- Física de Ataque
-        root.CFrame = targetRoot.CFrame * CFrame.Angles(math.random(-10,10), math.random(-10,10), math.random(-10,10))
-        root.Velocity = Vector3.new(10000, 10000, 10000)
-    end)
-    
-    -- Desconectar ataque al terminar
-    task.delay(4.1, function() 
-        if assault then assault:Disconnect() end
-    end)
-end
-
---// EL CEREBRO DETECTOR (MONITOR DE ROLES) //--
-local function StartRoleMonitor()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Z SLX | Monitor Activo",
-        Text = "Esperando que el servidor asigne Roles...",
-        Duration = 3
-    })
-
-    -- Limpiamos datos viejos
-    getgenv().CurrentSheriff = nil
-    
-    -- Conectamos a TODOS los jugadores en el Lobby
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
+    for playerName, info in pairs(data) do
+        -- info.Role es la clave maestra (Dice "Murderer", "Sheriff" o "Innocent")
+        if info.Role == "Murderer" then
+            getgenv().CurrentMurder = Players:FindFirstChild(playerName)
+            print("👺 MURDER DETECTADO: " .. playerName)
             
-            -- [TECNOLOGÍA YARHM]
-            -- Usamos ChildAdded en el Backpack porque es la PRIMERA señal del servidor.
-            -- El servidor dice: "Asignar Identidad: Sheriff -> Jugador X".
-            -- Nosotros interceptamos esa señal aquí:
+        elseif info.Role == "Sheriff" then
+            getgenv().CurrentSheriff = Players:FindFirstChild(playerName)
+            print("👮 SHERIFF DETECTADO: " .. playerName)
             
-            local connection = player.Backpack.ChildAdded:Connect(function(IdentityItem)
-                if IdentityItem.Name == "Gun" then
-                    -- ¡EL SERVIDOR LE DIO EL ROL DE SHERIFF!
-                    getgenv().CurrentSheriff = player
-                    ExecuteRoleFling(player) -- ATACAR
-                    connection:Disconnect() -- Ya cumplió, cortamos cable
-                    
-                elseif IdentityItem.Name == "Knife" then
-                    -- ¡EL SERVIDOR LE DIO EL ROL DE MURDER!
-                    getgenv().CurrentMurder = player
-                end
-            end)
-            
-            -- Hacemos lo mismo con el Character por si acaso el server laguea
-            if player.Character then
-                player.Character.ChildAdded:Connect(function(IdentityItem)
-                    if IdentityItem.Name == "Gun" and not getgenv().CurrentSheriff then
-                        getgenv().CurrentSheriff = player
-                        ExecuteRoleFling(player)
-                    end
-                end)
+            -- ¡AQUÍ ACTIVAMOS EL FLING AUTOMÁTICO!
+            if getgenv().AutoFlingActive then
+                FlingTarget(getgenv().CurrentSheriff)
             end
         end
     end
 end
 
---// TU BOTÓN LLAMA A ESTO //--
+-- Conectamos el "Micrófono" al evento
+PlayerDataChanged.OnClientEvent:Connect(function(newData)
+    UpdateRoles(newData)
+end)
+
+--// 2. FUNCIÓN DE FLING MEJORADA (USANDO LA DATA) //--
+-- Esta función ya no busca nada, solo recibe al objetivo y lo mata.
+function FlingTarget(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then return end
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Z SLX | DATA LEÍDA",
+        Text = "Sheriff: " .. targetPlayer.Name,
+        Duration = 5,
+        Icon = "rbxassetid://57254792"
+    })
+
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local tRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not root or not tRoot then return end
+
+    local safePos = root.CFrame
+    local startTime = tick()
+    
+    -- Modo Fantasma (Noclip)
+    local noclip = RunService.Stepped:Connect(function()
+        if char then 
+            for _, v in pairs(char:GetDescendants()) do 
+                if v:IsA("BasePart") then v.CanCollide = false end 
+            end 
+        end
+    end)
+
+    -- Bucle de Ataque (4s)
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if tick() - startTime > 4 or not tRoot.Parent then
+            connection:Disconnect()
+            noclip:Disconnect()
+            root.Velocity = Vector3.zero
+            root.RotVelocity = Vector3.zero
+            root.CFrame = safePos -- Regreso
+            return
+        end
+        
+        -- Fling Violento
+        root.CFrame = tRoot.CFrame * CFrame.Angles(math.random(-10,10), math.random(-10,10), math.random(-10,10))
+        root.Velocity = Vector3.new(10000, 10000, 10000)
+    end)
+end
+
+--// 3. EL BOTÓN (SOLO ACTIVA EL MODO AUTOMÁTICO) //--
+getgenv().AutoFlingActive = false
+
 local function FlingSheriff()
-    StartRoleMonitor() -- Inicia la vigilancia
+    -- Al picarle, solo le decimos al script que esté listo para cuando llegue la data
+    getgenv().AutoFlingActive = true
+    
+    -- Si ya sabemos quién es (porque la ronda ya empezó), atacamos directo
+    if getgenv().CurrentSheriff then
+        FlingTarget(getgenv().CurrentSheriff)
+    else
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Z SLX | PREDICT",
+            Text = "Esperando señal del servidor...",
+            Duration = 3
+        })
+    end
 end
 
 --// 7. UI SETUP //--
