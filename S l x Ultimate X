@@ -601,101 +601,115 @@ local function FlingSheriff()
     end
 end
 
---// 🔫 AUTO SHOOT INTELIGENTE (USA ROLE CACHE + WALLCHECK) //--
+--// 🔫 AUTO SHOOT V3: MATH & PREDICCION (SIN FALLAS) //--
+-- Este sistema usa cálculos vectoriales para asegurar el impacto.
+
 getgenv().AutoShoot_Active = false
-getgenv().IsShooting = false -- Para que no se bugee intentando disparar 2 veces
+local ShootDebounce = false -- Para no trabar el arma
 
--- Función de Visibilidad (WallCheck)
-local function CheckWall(targetRoot)
-    local char = LocalPlayer.Character
-    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-    if not myRoot or not targetRoot then return false end
-
-    -- Trazamos una línea desde tu pecho hasta el del Murder
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {char, Workspace.CurrentCamera} -- Ignoramos tu cuerpo y la cámara
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-
-    local direction = (targetRoot.Position - myRoot.Position)
-    local result = Workspace:Raycast(myRoot.Position, direction, params)
-
-    -- Si el rayo choca con el Murder o no choca con nada (aire), hay tiro limpio
-    if result then
-        if result.Instance:IsDescendantOf(targetRoot.Parent) then
-            return true -- ¡TIRO LIMPIO!
-        else
-            return false -- Hay una pared estorbando
-        end
-    end
-    return true
+-- 1. CALCULADORA DE TRAYECTORIA (CÁLCULOS WE)
+local function GetShootTrajectory(targetPart)
+    local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
+    local pingNumber = tonumber(string.match(ping, "%d+")) or 50
+    
+    -- Fórmula: Posición + (Velocidad * (Lag / 1000))
+    -- Esto "adivina" dónde estará el Murder cuando la bala llegue.
+    local prediction = targetPart.Position + (targetPart.AssemblyLinearVelocity * (pingNumber / 1000 + 0.035))
+    return prediction
 end
 
--- Bucle Maestro del Auto-Shoot
+-- 2. WALLCHECK MATEMÁTICO (RAYCAST INVISIBLE)
+local function IsPathClear(origin, targetPos)
+    local direction = targetPos - origin
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, workspace.CurrentCamera}
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    rayParams.IgnoreWater = true
+    
+    local result = workspace:Raycast(origin, direction, rayParams)
+    
+    if result then
+        -- Si choca con algo que NO es un jugador, es pared.
+        if result.Instance.Parent:FindFirstChild("Humanoid") then
+            return true -- Es un jugador (tiro limpio)
+        else
+            return false -- Es pared
+        end
+    end
+    return true -- Aire limpio
+end
+
+-- 3. BUCLE DE EJECUCIÓN (CORRE 60 VECES POR SEGUNDO)
 task.spawn(function()
     while true do
-        task.wait(0.1) -- Revisa 10 veces por segundo (Rápido pero sin lag)
+        task.wait() -- Velocidad máxima del motor
         
-        if getgenv().AutoShoot_Active and not getgenv().IsShooting then
-            -- 1. BUSCAMOS AL MURDER USANDO EL CEREBRO DE ROLES
-            local murder = nil
-            if getgenv().RoleCache then
-                for name, data in pairs(getgenv().RoleCache) do
-                    if data.Role == "Murderer" then
-                        murder = Players:FindFirstChild(name)
+        if getgenv().AutoShoot_Active and not ShootDebounce then
+            
+            -- A) BUSCAMOS AL MURDER (Usando tu sistema de roles que ya sirve)
+            local murder = getgenv().CurrentMurder -- Viene del script de roles
+            
+            -- Si el sistema de roles aún no lo detecta, lo buscamos manual por cuchillo
+            if not murder then
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p.Backpack:FindFirstChild("Knife") or (p.Character and p.Character:FindFirstChild("Knife")) then
+                        murder = p
                         break
                     end
                 end
             end
 
-            -- 2. VALIDACIONES (Distancia, Vida, Paredes)
-            if murder and murder.Character and murder.Character:FindFirstChild("HumanoidRootPart") then
-                local mRoot = murder.Character.HumanoidRootPart
-                local mHum = murder.Character:FindFirstChild("Humanoid")
-                
+            -- B) VALIDAMOS SI VALE LA PENA DISPARAR
+            if murder and murder.Character and murder.Character:FindFirstChild("Head") then
+                local mHead = murder.Character.Head
                 local char = LocalPlayer.Character
                 local myRoot = char and char:FindFirstChild("HumanoidRootPart")
                 
-                -- Checamos que existamos y estemos vivos
-                if myRoot and mHum and mHum.Health > 0 then
-                    local dist = (myRoot.Position - mRoot.Position).Magnitude
+                -- Checamos si tenemos pistola nosotros (Sheriff o Héroe)
+                local gun = char:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+                
+                if myRoot and gun then
+                    local dist = (myRoot.Position - mHead.Position).Magnitude
                     
-                    -- RANGO: Menos de 100 studs y TIRO LIMPIO
-                    if dist < 100 and CheckWall(mRoot) then
-                        
-                        -- 3. BUSCAR PISTOLA (En mano o mochila)
-                        local gun = char:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
-                        
-                        if gun then
-                            getgenv().IsShooting = true -- Bloqueamos para no spamear
+                    -- RANGO: 100 Studs (Tiro seguro)
+                    if dist < 100 then
+                        -- WALLCHECK: ¿Podemos darle?
+                        if IsPathClear(myRoot.Position, mHead.Position) then
                             
-                            -- A) EQUIPAR RÁPIDO
+                            ShootDebounce = true -- Bloqueo
+                            
+                            -- C) LA SECUENCIA DE DISPARO (RÁPIDA Y FURIOSA)
+                            
+                            -- 1. EQUIPAR (Sin animación lenta)
                             if gun.Parent ~= char then
                                 char.Humanoid:EquipTool(gun)
-                                task.wait(0.1) -- Pequeña espera para que el server registre el equip
                             end
                             
-                            -- B) PREDICCIÓN Y DISPARO
-                            local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-                            local prediction = mRoot.Position + (mRoot.Velocity * (ping / 1000 + 0.05))
+                            -- 2. CALCULAR
+                            local targetPos = GetShootTrajectory(mHead)
                             
-                            -- Disparamos al evento del juego
+                            -- 3. ESPERA TÉCNICA (0.1s es lo mínimo que Roblox pide para registrar el arma)
+                            task.wait(0.15) 
+                            
+                            -- 4. ¡FUEGO! (Directo al servidor)
                             if gun:FindFirstChild("Shoot") then
-                                gun.Shoot:FireServer(mRoot.CFrame.Position, prediction)
+                                -- MM2 pide (Origen, Destino)
+                                gun.Shoot:FireServer(myRoot.Position, targetPos)
                                 
-                                -- Feedback Visual
+                                -- Feedback
                                 game:GetService("StarterGui"):SetCore("SendNotification", {
-                                    Title = "AUTO-SHOOT 🔫",
-                                    Text = "Disparo enviado a: " .. murder.Name,
-                                    Duration = 2
+                                    Title = "💥 DISPARO MATH",
+                                    Text = "Bala enviada a: " .. murder.Name,
+                                    Duration = 1.5
                                 })
                             end
                             
-                            -- C) GUARDAR RÁPIDO (Estilo Ninja)
-                            task.wait(0.1)
+                            -- 5. GUARDAR Y ENFRIAR
+                            task.wait(0.2)
                             char.Humanoid:UnequipTools()
                             
-                            task.wait(1.5) -- Cooldown para no gastar balas a lo tonto
-                            getgenv().IsShooting = false
+                            task.wait(1.5) -- Espera para no fallar el siguiente tiro
+                            ShootDebounce = false
                         end
                     end
                 end
