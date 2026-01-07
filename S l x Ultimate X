@@ -203,11 +203,23 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- [3. ESP JUGADORES]
+    -- [3. ESP JUGADORES - AHORA CON CEREBRO DE ROLES REALES]
      if ESP_Shadow_Active or ESP_2D_Active or ESP_Skeleton_Active or ESP_Tracer_Active or ESP_Info_Active then
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Head") then
-                local role = GetPlayerRole(p)
+                
+                -- [[ 🔥 AQUÍ ESTÁ LA NUEVA LÓGICA NIVEL YARHM 🔥 ]] --
+                local role = "Innocent" -- Por defecto
+                
+                -- 1. Intentamos leer la DATA del servidor (Lo más rápido y seguro)
+                if getgenv().RoleCache and getgenv().RoleCache[p.Name] then
+                    role = getgenv().RoleCache[p.Name].Role -- Devuelve "Murderer", "Sheriff" o "Innocent" directo del sistema
+                else
+                    -- 2. Si estamos en el lobby o algo falló, usamos el método viejo
+                    role = GetPlayerRole(p)
+                end
+
+                -- Colores basados en el ROL REAL
                 local color = Color3.fromRGB(0, 255, 0) -- Verde (Inocente)
                 if role == "Murderer" then color = Color3.fromRGB(255, 0, 0) -- Rojo
                 elseif role == "Sheriff" then color = Color3.fromRGB(0, 0, 255) end -- Azul
