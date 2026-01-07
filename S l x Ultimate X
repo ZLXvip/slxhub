@@ -458,62 +458,108 @@ local function ManualTPGun()
     end
 end
 
---// FUNCIÓN FLING SHERIFF (TP VIOLENTO + REGRESO) //--
-local function FlingSheriff()
+--// VARIABLES PARA LA DETECCIÓN PREMIUM //--
+local FlingConnections = {} -- Aquí guardamos los "cables" para cortarlos después
+
+--// FUNCIÓN LIMPIEZA (Para no dar lag) //--
+local function StopDetection()
+    for _, conn in pairs(FlingConnections) do
+        if conn then conn:Disconnect() end
+    end
+    table.clear(FlingConnections)
+end
+
+--// LA ACCIÓN FÍSICA (EL FLING EN SÍ) //--
+local function StartViolentFling(target)
+    StopDetection() -- Ya lo encontramos, dejamos de buscar
+    
     local char = LocalPlayer.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    
-    -- 1. BUSCAR AL SHERIFF
-    local sheriff = nil
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and (p.Backpack:FindFirstChild("Gun") or (p.Character and p.Character:FindFirstChild("Gun"))) then
-            sheriff = p
-            break
-        end
-    end
-    
-    -- Si no hay Sheriff, avisamos y cancelamos
-    if not sheriff or not sheriff.Character or not sheriff.Character:FindFirstChild("HumanoidRootPart") then
-         game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX Hub", Text = "No se encontró Sheriff.", Duration = 2})
-         return
-    end
-    
-    local sRoot = sheriff.Character.HumanoidRootPart
-    local oldPos = root.CFrame -- Guardamos donde estabas (ESCALERAS, ETC)
-    
-    -- Aviso de inicio
-    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX Hub", Text = "FLING ACTIVO! 4 Segundos...", Duration = 2})
-    
-    -- 2. EL BUCLE DE LA MUERTE (4 SEGUNDOS)
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local sChar = target.Character
+    local sRoot = sChar and sChar:FindFirstChild("HumanoidRootPart")
+
+    if not root or not sRoot then return end
+
+    -- NOTIFICACIÓN DE HACKER
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "⚡ DETECTADO PRE-PARTIDA", 
+        Text = "Sheriff: " .. target.Name, 
+        Duration = 4
+    })
+
+    local oldPos = root.CFrame -- Guardamos base
     local t = tick()
     local connection
-    
-    -- Usamos Heartbeat para que sea más rápido que los frames (TP SPAM)
+
+    -- GODMODE / NOCLIP
+    local noclip = RunService.Stepped:Connect(function()
+        if char then for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
+    end)
+
+    -- BUCLE DE ATAQUE (4 SEGUNDOS)
     connection = RunService.Heartbeat:Connect(function()
-        -- Si pasaron 4s o el sheriff se fue, cortamos
-        if tick() - t > 4 or not sRoot or not sRoot.Parent then
+        if tick() - t > 4 or not sRoot.Parent then
             connection:Disconnect()
-            
-            -- FRENAMOS TU PERSONAJE
-            root.Velocity = Vector3.new(0,0,0)
-            root.RotVelocity = Vector3.new(0,0,0)
-            
-            -- TE REGRESAMOS A TU LUGAR SEGURO
-            root.CFrame = oldPos 
-            game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX Hub", Text = "Regreso Seguro Completado.", Duration = 2})
+            noclip:Disconnect()
+            root.Velocity = Vector3.zero
+            root.RotVelocity = Vector3.zero
+            root.CFrame = oldPos
+            game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX", Text = "Regreso completado.", Duration = 2})
             return
         end
-        
-        -- TP DENTRO DEL SHERIFF + GIRO LOCO (ESTO ES EL FLING)
-        root.CFrame = sRoot.CFrame * CFrame.new(0,0,0) * CFrame.Angles(math.random(-100,100), math.random(-100,100), math.random(-100,100))
-        root.Velocity = Vector3.new(10000, 10000, 10000) -- FUERZA INFINITA
+
+        -- TP VIOLENTO
+        root.CFrame = sRoot.CFrame * CFrame.Angles(math.random(-10,10), math.random(-10,10), math.random(-10,10))
+        root.Velocity = Vector3.new(10000, 10000, 10000)
     end)
-    
-    -- Godmode Temporal (Noclip) para que no te atores
-    for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then part.CanCollide = false end
+end
+
+--// EL CEREBRO TIPO YARHM (DETECTA RANGOS AL NACER) //--
+local function FlingSheriff()
+    -- 1. Primero checamos si YA existe un Sheriff (Por si activas tarde)
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            if p.Backpack:FindFirstChild("Gun") or (p.Character and p.Character:FindFirstChild("Gun")) then
+                StartViolentFling(p)
+                return -- Ya lo encontramos, nos vamos
+            end
+        end
     end
+
+    -- 2. Si no hay Sheriff, ACTIVAMOS LA VIGILANCIA DE MOCHILAS (Esto es lo OP)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Z SLX | Monitor Activo", 
+        Text = "Esperando asignación de roles...", 
+        Duration = 3
+    })
+
+    -- Conectamos un sensor a cada jugador
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            -- Sensor en la Mochila (Backpack)
+            local backpackConn = p.Backpack.ChildAdded:Connect(function(child)
+                if child.Name == "Gun" then
+                    StartViolentFling(p) -- ¡BINGO!
+                end
+            end)
+            table.insert(FlingConnections, backpackConn)
+
+            -- Sensor en el Personaje (Por si sale con el arma en la mano)
+            if p.Character then
+                local charConn = p.Character.ChildAdded:Connect(function(child)
+                    if child.Name == "Gun" then
+                        StartViolentFling(p) -- ¡BINGO!
+                    end
+                end)
+                table.insert(FlingConnections, charConn)
+            end
+        end
+    end
+
+    -- Limpiamos los sensores después de 30 segundos si no pasa nada
+    task.delay(30, function()
+        StopDetection()
+    end)
 end
 
 --// 7. UI SETUP //--
