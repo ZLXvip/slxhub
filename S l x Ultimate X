@@ -20,6 +20,23 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local ParentTarget = LocalPlayer:WaitForChild("PlayerGui")
 
+--// 🧠 CEREBRO DE ROLES (DETECTA LA SEÑAL REAL DEL SERVIDOR) //--
+getgenv().RoleCache = {} -- Aquí se guarda la verdad absoluta
+
+task.spawn(function()
+    local RS = game:GetService("ReplicatedStorage")
+    -- Buscamos el evento exacto que usa YARHM
+    local Remotes = RS:WaitForChild("Remotes")
+    local Gameplay = Remotes:WaitForChild("Gameplay")
+    local RoleEvent = Gameplay:WaitForChild("PlayerDataChanged")
+
+    -- En cuanto el server grita los roles, los guardamos
+    RoleEvent.OnClientEvent:Connect(function(data)
+        getgenv().RoleCache = data 
+        -- data es una tabla: { ["Juanito"] = {Role = "Murderer"}, ["Pedro"] = {Role = "Sheriff"} }
+    end)
+end)
+
 getgenv().AutoTP_Active = false -- Empieza apagado por seguridad
 getgenv().KnifeAura_Active = false
 local LastThrow = 0 -- Para no saturar el servidor de disparos
