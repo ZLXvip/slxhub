@@ -214,9 +214,6 @@ RunService.RenderStepped:Connect(function()
                 -- 1. Intentamos leer la DATA del servidor (Lo más rápido y seguro)
                 if getgenv().RoleCache and getgenv().RoleCache[p.Name] then
                     role = getgenv().RoleCache[p.Name].Role -- Devuelve "Murderer", "Sheriff" o "Innocent" directo del sistema
-                else
-                    -- 2. Si estamos en el lobby o algo falló, usamos el método viejo
-                    role = GetPlayerRole(p)
                 end
 
                 -- Colores basados en el ROL REAL
