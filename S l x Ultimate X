@@ -458,21 +458,25 @@ local function ManualTPGun()
     end
 end
 
---// VARIABLES PARA LA DETECCIÓN PREMIUM //--
-local FlingConnections = {} -- Aquí guardamos los "cables" para cortarlos después
+--// SISTEMA OMNISCIENTE (DETECTA ROLES EN EL PRIMER FRAME) //--
+local RoleCache = {} -- Aquí guardamos quién es quién
+local Connections = {} -- Los cables espías
 
---// FUNCIÓN LIMPIEZA (Para no dar lag) //--
-local function StopDetection()
-    for _, conn in pairs(FlingConnections) do
+-- Función para limpiar basura de la ronda anterior
+local function ClearRoundData()
+    for _, conn in pairs(Connections) do
         if conn then conn:Disconnect() end
     end
-    table.clear(FlingConnections)
+    table.clear(Connections)
+    table.clear(RoleCache)
+    getgenv().SheriffFound = false
 end
 
---// LA ACCIÓN FÍSICA (EL FLING EN SÍ) //--
-local function StartViolentFling(target)
-    StopDetection() -- Ya lo encontramos, dejamos de buscar
-    
+-- LA FUNCIÓN DE FLING (Ya la conoces, pero optimizada)
+local function InstantFling(target)
+    if getgenv().SheriffFound then return end -- Si ya lo agarramos, no repetimos
+    getgenv().SheriffFound = true
+
     local char = LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local sChar = target.Character
@@ -480,86 +484,81 @@ local function StartViolentFling(target)
 
     if not root or not sRoot then return end
 
-    -- NOTIFICACIÓN DE HACKER
+    -- NOTIFICACIÓN DE HACKER: LEÍMOS EL RANGO ANTES DE TIEMPO
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "⚡ DETECTADO PRE-PARTIDA", 
-        Text = "Sheriff: " .. target.Name, 
-        Duration = 4
+        Title = "⚡ RANGO DETECTADO", 
+        Text = "Sheriff: " .. target.Name .. " (Fling Inmediato)", 
+        Duration = 5
     })
 
-    local oldPos = root.CFrame -- Guardamos base
+    local oldPos = root.CFrame
     local t = tick()
-    local connection
-
-    -- GODMODE / NOCLIP
+    
+    -- NOCLIP DE EMERGENCIA
     local noclip = RunService.Stepped:Connect(function()
         if char then for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
     end)
 
-    -- BUCLE DE ATAQUE (4 SEGUNDOS)
-    connection = RunService.Heartbeat:Connect(function()
+    -- ATAQUE DE 4 SEGUNDOS
+    local connection = RunService.Heartbeat:Connect(function()
         if tick() - t > 4 or not sRoot.Parent then
             connection:Disconnect()
             noclip:Disconnect()
             root.Velocity = Vector3.zero
             root.RotVelocity = Vector3.zero
             root.CFrame = oldPos
-            game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX", Text = "Regreso completado.", Duration = 2})
             return
         end
-
-        -- TP VIOLENTO
-        root.CFrame = sRoot.CFrame * CFrame.Angles(math.random(-10,10), math.random(-10,10), math.random(-10,10))
+        -- FLING VIOLENTO
+        root.CFrame = sRoot.CFrame * CFrame.Angles(math.random(-20,20), math.random(-20,20), math.random(-20,20))
         root.Velocity = Vector3.new(10000, 10000, 10000)
     end)
 end
 
---// EL CEREBRO TIPO YARHM (DETECTA RANGOS AL NACER) //--
-local function FlingSheriff()
-    -- 1. Primero checamos si YA existe un Sheriff (Por si activas tarde)
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            if p.Backpack:FindFirstChild("Gun") or (p.Character and p.Character:FindFirstChild("Gun")) then
-                StartViolentFling(p)
-                return -- Ya lo encontramos, nos vamos
-            end
-        end
-    end
+--// EL ESPÍA DEL CONTADOR (ESTO ES LO QUE PEDISTE) //--
+-- Este código se mete en cada jugador DESDE AHORITA y espera el dato del Rango.
+local function StartRoleSpy()
+    ClearRoundData() -- Limpiamos memoria
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Z SLX", Text = "Espiando Roles (Esperando Round)...", Duration = 3})
 
-    -- 2. Si no hay Sheriff, ACTIVAMOS LA VIGILANCIA DE MOCHILAS (Esto es lo OP)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Z SLX | Monitor Activo", 
-        Text = "Esperando asignación de roles...", 
-        Duration = 3
-    })
-
-    -- Conectamos un sensor a cada jugador
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            -- Sensor en la Mochila (Backpack)
-            local backpackConn = p.Backpack.ChildAdded:Connect(function(child)
+    -- Conectamos a TODOS los jugadores que existen
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            
+            -- 1. ESPIAR MOCHILA (BACKPACK)
+            -- En cuanto el server ponga el item, lo sabemos.
+            local bpConn = player.Backpack.ChildAdded:Connect(function(child)
                 if child.Name == "Gun" then
-                    StartViolentFling(p) -- ¡BINGO!
+                    RoleCache[player.Name] = "Sheriff"
+                    InstantFling(player) -- ¡ATACAR AL INSTANTE!
+                elseif child.Name == "Knife" then
+                    RoleCache[player.Name] = "Murderer"
                 end
             end)
-            table.insert(FlingConnections, backpackConn)
+            table.insert(Connections, bpConn)
 
-            -- Sensor en el Personaje (Por si sale con el arma en la mano)
-            if p.Character then
-                local charConn = p.Character.ChildAdded:Connect(function(child)
+            -- 2. ESPIAR PERSONAJE (CHARACTER)
+            -- A veces aparece en la cintura antes que en la mochila.
+            if player.Character then
+                local charConn = player.Character.ChildAdded:Connect(function(child)
                     if child.Name == "Gun" then
-                        StartViolentFling(p) -- ¡BINGO!
+                        RoleCache[player.Name] = "Sheriff"
+                        InstantFling(player)
+                    elseif child.Name == "Knife" then
+                        RoleCache[player.Name] = "Murderer"
                     end
                 end)
-                table.insert(FlingConnections, charConn)
+                table.insert(Connections, charConn)
             end
         end
     end
+end
 
-    -- Limpiamos los sensores después de 30 segundos si no pasa nada
-    task.delay(30, function()
-        StopDetection()
-    end)
+-- ESTO CONECTA EL BOTÓN A LA FUNCIÓN DE ESPÍA
+local function FlingSheriff()
+    -- Solo activamos el espía. Él hará el trabajo sucio cuando empiece la ronda.
+    StartRoleSpy()
 end
 
 --// 7. UI SETUP //--
