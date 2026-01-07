@@ -601,24 +601,21 @@ local function FlingSheriff()
     end
 end
 
---// 👁️ OJO DE DIOS: MOTOR DE PREDICCIÓN FÍSICA //--
+--// 👁️ OJO DE DIOS V5: MOTOR DE PREDICCIÓN CON SINCRONIZACIÓN //--
 local function GetGodPosition(targetRoot)
-    -- 1. Obtenemos Ping Real
+    -- Obtenemos Ping Real
     local rawPing = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
-    local ping = tonumber(rawPing) or 50
+    local ping = tonumber(rawPing) or 60
     
-    -- 2. La Fórmula Secreta (Ping + Server Tick Offset)
-    -- 0.06 es el retraso promedio del motor de Roblox
-    local predictionTime = (ping / 1000) + 0.06 
+    -- Fórmula V5: Ajuste dinámico
+    -- Si el ping es alto, adelantamos más la mira.
+    local predictionTime = (ping / 850) + 0.055 
     
-    -- 3. Proyección al Futuro
-    -- Posición Actual + (Velocidad * Tiempo)
     local futurePos = targetRoot.Position + (targetRoot.AssemblyLinearVelocity * predictionTime)
-    
     return futurePos
 end
 
---// WALLCHECK PREDICTIVO (Revisa la línea de fuego futura) //--
+--// WALLCHECK DE RUTA //--
 local function IsShotClear(origin, targetPos)
     local params = RaycastParams.new()
     params.FilterDescendantsInstances = {LocalPlayer.Character, workspace.CurrentCamera}
@@ -628,31 +625,27 @@ local function IsShotClear(origin, targetPos)
     local direction = targetPos - origin
     local result = workspace:Raycast(origin, direction, params)
     
-    if result then
-        -- Si chocamos con algo que NO es un Humano, es pared
-        if result.Instance.Parent:FindFirstChild("Humanoid") then
-            return true -- Vía libre
-        else
-            return false -- Pared estorbando en la trayectoria
-        end
+    if result and result.Instance.Parent:FindFirstChild("Humanoid") then
+        return true -- Es un jugador
+    elseif result then
+        return false -- Es pared
     end
-    return true -- Aire limpio
+    return true -- Aire libre
 end
 
---// 🔫 EJECUTOR AUTO-SHOOT V4 //--
+--// 🔫 EJECUTOR AUTO-SHOOT V5 (SERVER SYNC FIX) //--
 getgenv().AutoShoot_Active = false
 local IsShooting = false
 
 task.spawn(function()
     while true do
-        task.wait() -- Velocidad Máxima (60 checks por segundo)
+        task.wait() -- Ciclo rápido
         
         if getgenv().AutoShoot_Active and not IsShooting then
             
-            -- A) BUSCAR AL MURDER (Usando tu Cerebro de Roles + Backup)
+            -- A) BUSCAR AL MURDER (Usando el Cerebro de Roles que ya sirve)
             local murder = getgenv().CurrentMurder
             if not murder then
-                -- Backup por si el rol falló o entraron tarde
                 for _, p in pairs(Players:GetPlayers()) do
                     if p.Backpack:FindFirstChild("Knife") or (p.Character and p.Character:FindFirstChild("Knife")) then
                         murder = p
@@ -661,7 +654,7 @@ task.spawn(function()
                 end
             end
 
-            -- B) VALIDACIÓN DE TIRO
+            -- B) VALIDACIÓN
             if murder and murder.Character and murder.Character:FindFirstChild("HumanoidRootPart") then
                 local mRoot = murder.Character.HumanoidRootPart
                 local char = LocalPlayer.Character
@@ -671,46 +664,62 @@ task.spawn(function()
                 local gun = char:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
                 
                 if myRoot and gun then
-                    -- 👁️ CALCULO DEL OJO DE DIOS
-                    local predictedPos = GetGodPosition(mRoot)
                     local dist = (myRoot.Position - mRoot.Position).Magnitude
                     
-                    -- RANGO: 110 Studs (Aumentado para aprovechar la predicción)
+                    -- RANGO: 110 Studs
                     if dist < 110 then
+                        -- PRIMER CÁLCULO (Para ver si vale la pena sacar el arma)
+                        local preCheckPos = GetGodPosition(mRoot)
                         
-                        -- WALLCHECK AL FUTURO
-                        if IsShotClear(myRoot.Position, predictedPos) then
-                            
+                        if IsShotClear(myRoot.Position, preCheckPos) then
                             IsShooting = true
                             
-                            -- C) SECUENCIA DE DISPARO SIN ERRORES
+                            -- C) LA SECUENCIA SINCRONIZADA (AQUÍ ESTÁ EL FIX)
                             
-                            -- 1. Equipar Forzado (Vital para que no se encasquille)
+                            -- 1. EQUIPAR
                             if gun.Parent ~= char then
                                 char.Humanoid:EquipTool(gun)
-                                task.wait(0.1) -- Espera técnica obligatoria
                             end
                             
-                            -- 2. Validación final
-                            if gun.Parent == char then
-                                -- 3. ¡FUEGO AL FUTURO!
+                            -- [FIX IMPORTANTE] ESPERA INTELIGENTE
+                            -- Calculamos cuánto tarda tu internet en avisar al server que tienes el arma
+                            local rawPing = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
+                            local pingValue = tonumber(rawPing) or 60
+                            
+                            -- Esperamos mínimo 0.25s o más si tienes lag.
+                            -- Si bajamos de este tiempo, el disparo NO SALE.
+                            local syncDelay = math.clamp(pingValue / 1000, 0.1, 0.3) + 0.25 
+                            task.wait(syncDelay)
+                            
+                            -- 2. RE-CALCULAR (OJO DE DIOS 2.0)
+                            -- Como esperamos un rato, el Murder ya se movió. Calculamos de nuevo.
+                            local finalPrediction = GetGodPosition(mRoot)
+                            
+                            -- 3. VALIDACIÓN FINAL Y DISPARO
+                            if gun.Parent == char and IsShotClear(myRoot.Position, finalPrediction) then
+                                
                                 if gun:FindFirstChild("Shoot") then
-                                    gun.Shoot:FireServer(myRoot.Position, predictedPos)
+                                    -- ¡FUEGO!
+                                    gun.Shoot:FireServer(myRoot.Position, finalPrediction)
                                     
-                                    -- Efecto visual
+                                    -- Notificación Visual
                                     game:GetService("StarterGui"):SetCore("SendNotification", {
-                                        Title = "👁️ GOD'S EYE",
-                                        Text = "Predicción ejecutada: " .. murder.Name,
+                                        Title = "🔫 BOOM",
+                                        Text = "Disparo Sincronizado a: " .. murder.Name,
                                         Duration = 1
                                     })
                                 end
                             end
                             
-                            -- 4. Guardar y Enfriar
-                            task.wait(0.2)
+                            -- 4. ESPERA DE SALIDA DE BALA
+                            -- Si guardamos muy rápido, cancelamos la bala en el aire.
+                            task.wait(0.15) 
+                            
+                            -- 5. GUARDAR
                             char.Humanoid:UnequipTools()
                             
-                            task.wait(1.3) -- Cooldown para no gastar balas
+                            -- 6. COOLDOWN
+                            task.wait(1.5) 
                             IsShooting = false
                         end
                     end
