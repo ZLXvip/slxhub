@@ -994,6 +994,19 @@ elseif text == "Fling for sheriff" then
         TweenService:Create(BS, TweenInfo.new(0.2), {Color = THEME.TextDark}):Play()
     end
 
+        elseif text == "Auto Shoot" then
+            getgenv().AutoShoot_Active = active
+            if active then
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Z SLX", Text = "Auto-Shoot: ON (Rango 100m + Wallcheck)", Duration = 3
+                })
+            else
+                getgenv().AutoShoot_Active = false
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Z SLX", Text = "Auto-Shoot: OFF", Duration = 2
+                })
+            end
+
         elseif text == "ESP Shadow" then ESP_Shadow_Active = active
         elseif text == "ESP 2D 8️⃣" then ESP_2D_Active = active
         elseif text == "ESP Skeleton" then ESP_Skeleton_Active = active
