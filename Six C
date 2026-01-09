@@ -39,9 +39,9 @@ end)
 
 getgenv().AutoTP_Active = false -- Empieza apagado por seguridad
 getgenv().KnifeAura_Active = false
-local LastThrow = 0 -- Para no saturar el servidor de disparos
+local LastThrow = 0 -- Para no saturar el servidor de 
 
---// Hooks For  PC/movil
+--// Hooks For PC/movil (Optimizado para Ojo de Dios Pro)
 local success, err = pcall(function()
     local mt = getrawmetatable(game)
     setreadonly(mt, false)
@@ -49,57 +49,94 @@ local success, err = pcall(function()
 
     mt.__index = newcclosure(function(self, idx)
         if self == Mouse and (idx == "Hit" or idx == "Target") and getgenv().V1_Active and getgenv().CurrentTarget then
+            -- Devolvemos el CFrame PREDICHO por el motor matemático
             if idx == "Hit" then return getgenv().CurrentTarget.CFrame end
-            if idx == "Target" then return getgenv().CurrentTarget.Parent end
+            if idx == "Target" then return getgenv().CurrentTarget.Part end
         end
         return oldIndex(self, idx)
     end)
 end)
 
-if not success then
-    warn("Tu ejecutor no soporta Silent Aim (Metatables). El resto del script seguirá cargando.")
-end
-
---// 3. SISTEMA "OJO DE DIOS" (AIMBOT RADAR) //--
+--// 3. ENGINE DE PREDICCIÓN "OJO DE DIOS" (PURE DATA VERSION) //--
 getgenv().V1_Active = false 
 getgenv().CurrentTarget = nil 
 
-local V2_Active = false 
-local Att0 = Instance.new("Attachment")
-local Att1 = Instance.new("Attachment")
-
-local function CreateBeam()
-    local beam = Instance.new("Beam")
-    beam.Name = "MurderTracker"
-    beam.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)) 
-    beam.FaceCamera = true
-    beam.Width0 = 0.1
-    beam.Width1 = 0.1
-    beam.Texture = "rbxassetid://446111271" 
-    beam.TextureSpeed = 2
-    beam.Transparency = NumberSequence.new(0.2)
-    return beam
+-- [ CEREBRO MATEMÁTICO: PREDICCIÓN DE TRAYECTORIA ] --
+local function GetGodAim(targetRoot)
+    -- Obtener latencia real para compensar el retraso del disparo
+    local rawPing = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
+    local pingValue = tonumber(rawPing) or 60
+    
+    -- FACTOR DE ADELANTO: (Ping / Calibración) + Offset de Servidor
+    -- 0.065 es el promedio de actualización de física en MM2
+    local predictionTime = (pingValue / 1000) + 0.065 
+    
+    -- P_f = P_c + (V_t * T_p)
+    -- Calculamos la posición futura sumando la velocidad actual por el tiempo de retraso
+    local predictedPosition = targetRoot.Position + (targetRoot.AssemblyLinearVelocity * predictionTime)
+    
+    return predictedPosition
 end
 
-local VisualBeam = CreateBeam()
+-- [ FILTRO DE OBSTÁCULOS: WALLCHECK AGRESIVO ] --
+local function IsVisible(targetPart, origin)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, workspace.CurrentCamera}
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    rayParams.IgnoreWater = true
+    
+    local direction = targetPart.Position - origin
+    local result = workspace:Raycast(origin, direction, rayParams)
+    
+    -- Si no hay colisión o la colisión es con el objetivo, el tiro es válido
+    if result then
+        return result.Instance.Parent == targetPart.Parent or result.Instance.Parent:FindFirstChild("Humanoid") ~= nil
+    end
+    return true
+end
 
+-- [ BUSCADOR DE OBJETIVOS BASADO EN ROLES ] --
 local function FindMurderer()
+    -- Prioridad 1: RoleCache (Detección de señal de servidor)
+    if getgenv().RoleCache then
+        for name, data in pairs(getgenv().RoleCache) do
+            if data.Role == "Murderer" then
+                local p = Players:FindFirstChild(name)
+                if p and p.Character then return p.Character end
+            end
+        end
+    end
+    
+    -- Prioridad 2: Detección física de arma
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character then
-            local char = p.Character
-            local backpack = p.Backpack
-            if char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife")) then
-                return char
-            end
-            local tool = char:FindFirstChildOfClass("Tool") or (backpack and backpack:FindFirstChildOfClass("Tool"))
-            if tool then
-                local n = tool.Name:lower()
-                if n:find("knif") or n:find("cuch") then return char end
+            if p.Character:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife") then
+                return p.Character
             end
         end
     end
     return nil
 end
+
+-- [ BUCLE DE SEGUIMIENTO SILENCIOSO ] --
+RunService.Heartbeat:Connect(function()
+    local murdChar = FindMurderer()
+    local myChar = LocalPlayer.Character
+    
+    if murdChar and myChar and murdChar:FindFirstChild("HumanoidRootPart") and myChar:FindFirstChild("HumanoidRootPart") then
+        local targetRoot = murdChar.HumanoidRootPart
+        local myRoot = myChar.HumanoidRootPart
+        
+        -- Sincronizamos el Target para los Metatable Hooks (Silent Aim)
+        -- Ahora CurrentTarget es el punto PREDICHO, no la posición estática
+        getgenv().CurrentTarget = {
+            Part = targetRoot,
+            CFrame = CFrame.new(GetGodAim(targetRoot))
+        }
+    else
+        getgenv().CurrentTarget = nil
+    end
+end)
 
 --// 4. SISTEMA ESP COMPLETO //--
 local ESP_Shadow_Active = false
