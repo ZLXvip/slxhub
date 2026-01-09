@@ -57,84 +57,113 @@ local success, err = pcall(function()
     end)
 end)
 
---// 3. ENGINE DE PREDICCIÓN "OJO DE DIOS" (PURE DATA VERSION) //--
+--// 3. ENGINE DE PREDICCIÓN "OJO DE DIOS" (PURE DATA PRO) //--
 getgenv().V1_Active = false 
 getgenv().CurrentTarget = nil 
 
--- [ CEREBRO MATEMÁTICO: PREDICCIÓN DE TRAYECTORIA ] --
 local function GetGodAim(targetRoot)
-    -- Obtener latencia real para compensar el retraso del disparo
     local rawPing = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString():split(" ")[1]
     local pingValue = tonumber(rawPing) or 60
-    
-    -- FACTOR DE ADELANTO: (Ping / Calibración) + Offset de Servidor
-    -- 0.065 es el promedio de actualización de física en MM2
     local predictionTime = (pingValue / 1000) + 0.065 
-    
-    -- P_f = P_c + (V_t * T_p)
-    -- Calculamos la posición futura sumando la velocidad actual por el tiempo de retraso
-    local predictedPosition = targetRoot.Position + (targetRoot.AssemblyLinearVelocity * predictionTime)
-    
-    return predictedPosition
+    return targetRoot.Position + (targetRoot.AssemblyLinearVelocity * predictionTime)
 end
 
--- [ FILTRO DE OBSTÁCULOS: WALLCHECK AGRESIVO ] --
-local function IsVisible(targetPart, origin)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, workspace.CurrentCamera}
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    rayParams.IgnoreWater = true
-    
-    local direction = targetPart.Position - origin
-    local result = workspace:Raycast(origin, direction, rayParams)
-    
-    -- Si no hay colisión o la colisión es con el objetivo, el tiro es válido
-    if result then
-        return result.Instance.Parent == targetPart.Parent or result.Instance.Parent:FindFirstChild("Humanoid") ~= nil
-    end
-    return true
-end
-
--- [ BUSCADOR DE OBJETIVOS BASADO EN ROLES ] --
-local function FindMurderer()
-    -- Prioridad 1: RoleCache (Detección de señal de servidor)
+-- Bucle de Rastreo Pro (Invisible)
+RunService.Heartbeat:Connect(function()
+    local murd = nil
+    -- Buscador de Murderer por Roles o Arma
     if getgenv().RoleCache then
         for name, data in pairs(getgenv().RoleCache) do
-            if data.Role == "Murderer" then
-                local p = Players:FindFirstChild(name)
-                if p and p.Character then return p.Character end
+            if data.Role == "Murderer" then murd = Players:FindFirstChild(name) break end
+        end
+    end
+    if not murd then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and (p.Character:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife")) then
+                murd = p break
             end
         end
     end
-    
-    -- Prioridad 2: Detección física de arma
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            if p.Character:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife") then
-                return p.Character
-            end
-        end
-    end
-    return nil
-end
 
--- [ BUCLE DE SEGUIMIENTO SILENCIOSO ] --
-RunService.Heartbeat:Connect(function()
-    local murdChar = FindMurderer()
-    local myChar = LocalPlayer.Character
-    
-    if murdChar and myChar and murdChar:FindFirstChild("HumanoidRootPart") and myChar:FindFirstChild("HumanoidRootPart") then
-        local targetRoot = murdChar.HumanoidRootPart
-        local myRoot = myChar.HumanoidRootPart
-        
-        -- Sincronizamos el Target para los Metatable Hooks (Silent Aim)
-        -- Ahora CurrentTarget es el punto PREDICHO, no la posición estática
+    if murd and murd.Character and murd.Character:FindFirstChild("HumanoidRootPart") then
+        local root = murd.Character.HumanoidRootPart
         getgenv().CurrentTarget = {
-            Part = targetRoot,
-            CFrame = CFrame.new(GetGodAim(targetRoot))
+            Part = root,
+            CFrame = CFrame.new(GetGodAim(root))
         }
     else
         getgenv().CurrentTarget = nil
+    end
+end)
+
+--// 4. SISTEMA ESP & RENDER (CORREGIDO) //--
+RunService.RenderStepped:Connect(function()
+    if not (ESP_Shadow_Active or ESP_2D_Active or ESP_Skeleton_Active or ESP_Tracer_Active or ESP_Info_Active) then 
+        -- Limpieza rápida si todo está apagado
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Character then
+                if p.Character:FindFirstChild("SLX_Shadow") then p.Character.SLX_Shadow:Destroy() end
+                local root = p.Character:FindFirstChild("HumanoidRootPart")
+                if root and root:FindFirstChild("SLX_Box") then root.SLX_Box:Destroy() end
+                if p.Character:FindFirstChild("Head") and p.Character.Head:FindFirstChild("SLX_Info") then p.Character.Head.SLX_Info:Destroy() end
+            end
+        end
+        return 
+    end
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Head") then
+            local char = p.Character
+            local root = char.HumanoidRootPart
+            
+            -- LÓGICA DE COLOR POR ROL
+            local serverRole = "Innocent"
+            if getgenv().RoleCache and getgenv().RoleCache[p.Name] then serverRole = getgenv().RoleCache[p.Name].Role end
+            
+            local color = Color3.fromRGB(0, 255, 0) -- Verde
+            local roleName = "Innocent"
+
+            if serverRole == "Murderer" or char:FindFirstChild("Knife") or p.Backpack:FindFirstChild("Knife") then
+                color = Color3.fromRGB(255, 0, 0); roleName = "Murderer"
+            elseif serverRole == "Sheriff" or char:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Gun") then
+                color = Color3.fromRGB(0, 150, 255); roleName = "Sheriff"
+            end
+
+            -- [RENDER: SHADOW]
+            if ESP_Shadow_Active then
+                local highlight = char:FindFirstChild("SLX_Shadow") or Instance.new("Highlight", char)
+                highlight.Name = "SLX_Shadow"
+                highlight.FillColor = color
+                highlight.OutlineColor = Color3.new(1,1,1)
+                highlight.FillTransparency = 0.5
+            end
+
+            -- [RENDER: BOX 2D]
+            if ESP_2D_Active then
+                local box = root:FindFirstChild("SLX_Box")
+                if not box then
+                    box = Instance.new("BillboardGui", root)
+                    box.Name = "SLX_Box"; box.AlwaysOnTop = true; box.Size = UDim2.new(4, 0, 5.5, 0)
+                    local f = Instance.new("Frame", box); f.Size = UDim2.new(1,0,1,0); f.BackgroundTransparency = 1
+                    Instance.new("UIStroke", f).Thickness = 1.5
+                end
+                box.Frame.UIStroke.Color = color
+            end
+
+            -- [RENDER: NAMES & DISTANCE]
+            if ESP_Info_Active then
+                local head = char.Head
+                local info = head:FindFirstChild("SLX_Info") or Instance.new("BillboardGui", head)
+                if not info.ClassName == "BillboardGui" then info = Instance.new("BillboardGui", head) end
+                info.Name = "SLX_Info"; info.Size = UDim2.new(0,100,0,50); info.StudsOffset = Vector3.new(0,3,0); info.AlwaysOnTop = true
+                
+                local lab = info:FindFirstChildOfClass("TextLabel") or Instance.new("TextLabel", info)
+                lab.BackgroundTransparency = 1; lab.Size = UDim2.new(1,0,1,0); lab.Font = Enum.Font.GothamBold; lab.TextSize = 12
+                local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - root.Position).Magnitude)
+                lab.Text = p.Name .. "\n[" .. roleName .. "]\n" .. dist .. "m"
+                lab.TextColor3 = color
+            end
+        end
     end
 end)
 
