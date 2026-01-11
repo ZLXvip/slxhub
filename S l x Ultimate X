@@ -179,8 +179,16 @@ RunService.RenderStepped:Connect(function()
     if not ESP_2D_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character.HumanoidRootPart:FindFirstChild("SLX_Box") then v.Character.HumanoidRootPart.SLX_Box:Destroy() end end end
     if not ESP_Tracer_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then if v.Character.HumanoidRootPart:FindFirstChild("SLX_Beam") then v.Character.HumanoidRootPart.SLX_Beam:Destroy() end end end end
     
+    -- [NUEVO FIX] LIMPIEZA TOTAL DE SKELETON AL APAGAR
+    if not ESP_Skeleton_Active then
+        SkeletonGUI:ClearAllChildren()
+    end
+
     -- [3. ESP JUGADORES - BUCLE MAESTRO FIXEADO]
     if ESP_Shadow_Active or ESP_2D_Active or ESP_Skeleton_Active or ESP_Tracer_Active or ESP_Info_Active then
+        -- Chequeo rápido: ¿Existe la pistola tirada en el mapa?
+        local GunDropped = Workspace:FindFirstChild("GunDrop", true) ~= nil
+
         for _, p in pairs(Players:GetPlayers()) do
             local char = p.Character
             
@@ -215,8 +223,19 @@ RunService.RenderStepped:Connect(function()
                     role = "Murderer"
                     color = Color3.fromRGB(255, 0, 0) 
                 elseif serverRole == "Sheriff" then
-                    role = "Sheriff"
-                    color = Color3.fromRGB(0, 0, 255) 
+                    -- [LÓGICA HÍBRIDA FIX]
+                    if hasGun then
+                        role = "Sheriff"
+                        color = Color3.fromRGB(0, 0, 255) 
+                    else
+                        if GunDropped then
+                            role = "Innocent"
+                            color = Color3.fromRGB(0, 255, 0)
+                        else
+                            role = "Sheriff"
+                            color = Color3.fromRGB(0, 0, 255)
+                        end
+                    end
                 elseif hasGun then
                     role = "HERO 🔫"
                     color = Color3.fromRGB(255, 255, 0)
