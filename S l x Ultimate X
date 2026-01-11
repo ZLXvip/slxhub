@@ -98,7 +98,7 @@ local function FindMurderer()
     return nil
 end
 
---// 4. SISTEMA ESP COMPLETO (FIXED: GHOST SKELETON + CLEANUP) //--
+--// 4. SISTEMA ESP COMPLETO (FIXED: SHERIFF RESET ON DEATH) //--
 local ESP_Shadow_Active = false
 local ESP_2D_Active = false 
 local ESP_Skeleton_Active = false
@@ -166,7 +166,6 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- [2. LIMPIEZA DE BASURA (GARBAGE COLLECTOR)]
-    -- Si un jugador se salió del server, borramos su esqueleto pegado
     for _, folder in pairs(SkeletonGUI:GetChildren()) do
         local playerName = folder.Name:sub(6) -- Quitamos "Skel_"
         if not Players:FindFirstChild(playerName) then
@@ -179,13 +178,12 @@ RunService.RenderStepped:Connect(function()
     if not ESP_2D_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character.HumanoidRootPart:FindFirstChild("SLX_Box") then v.Character.HumanoidRootPart.SLX_Box:Destroy() end end end
     if not ESP_Tracer_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then if v.Character.HumanoidRootPart:FindFirstChild("SLX_Beam") then v.Character.HumanoidRootPart.SLX_Beam:Destroy() end end end end
     
-    -- [3. ESP JUGADORES - BUCLE MAESTRO FIXEADO]
+    -- [3. ESP JUGADORES - BUCLE MAESTRO]
     if ESP_Shadow_Active or ESP_2D_Active or ESP_Skeleton_Active or ESP_Tracer_Active or ESP_Info_Active then
         for _, p in pairs(Players:GetPlayers()) do
             local char = p.Character
             
-            -- [CONDICIÓN DE VIDA ESTRICTA]
-            -- Si no tiene vida, forzamos apagado de Skeleton y continuamos
+            -- [CONDICIÓN DE VIDA ESTRICTA: SI ESTÁ MUERTO, SE LIMPIA TODO Y SE IGNORA]
             if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
                 if SkeletonGUI:FindFirstChild("Skel_"..p.Name) then
                     for _, line in pairs(SkeletonGUI["Skel_"..p.Name]:GetChildren()) do line.Visible = false end
@@ -199,7 +197,7 @@ RunService.RenderStepped:Connect(function()
             -- Si está vivo y no soy yo:
             if p ~= LocalPlayer and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Head") then
                 
-                -- ROLES (Lógica Aprobada)
+                -- ROLES
                 local serverRole = "Innocent"
                 if getgenv().RoleCache and getgenv().RoleCache[p.Name] then
                     serverRole = getgenv().RoleCache[p.Name].Role 
@@ -214,9 +212,19 @@ RunService.RenderStepped:Connect(function()
                 if hasKnife or serverRole == "Murderer" then
                     role = "Murderer"
                     color = Color3.fromRGB(255, 0, 0) 
+                
                 elseif serverRole == "Sheriff" then
-                    role = "Sheriff"
-                    color = Color3.fromRGB(0, 0, 255) 
+                    -- [[ 🔥 FIX SHERIFF MUERTO/LOBBY 🔥 ]] --
+                    -- Si el Cache dice que es Sheriff, verificamos si AÚN tiene el arma.
+                    if hasGun then
+                        role = "Sheriff"
+                        color = Color3.fromRGB(0, 0, 255) 
+                    else
+                        -- Si ya no tiene pistola (murió o respawneó), vuelve a ser Inocente (Verde)
+                        role = "Innocent"
+                        color = Color3.fromRGB(0, 255, 0)
+                    end
+                
                 elseif hasGun then
                     role = "HERO 🔫"
                     color = Color3.fromRGB(255, 255, 0)
@@ -252,7 +260,7 @@ RunService.RenderStepped:Connect(function()
                     local LLeg = char:FindFirstChild("LeftFoot") or char:FindFirstChild("Left Leg")
                     local RLeg = char:FindFirstChild("RightFoot") or char:FindFirstChild("Right Leg")
                     
-                    local shouldDraw = false -- POR DEFECTO ESTÁ APAGADO
+                    local shouldDraw = false 
                     
                     if Head and Torso and LArm and RArm and LLeg and RLeg then
                         local HeadP, Vis1 = Camera:WorldToViewportPoint(Head.Position)
@@ -262,7 +270,7 @@ RunService.RenderStepped:Connect(function()
                         local LLegP, Vis5 = Camera:WorldToViewportPoint(LLeg.Position)
                         local RLegP, Vis6 = Camera:WorldToViewportPoint(RLeg.Position)
                         
-                        if Vis2 then -- Solo si está visible en pantalla
+                        if Vis2 then 
                             shouldDraw = true
                             UpdateLine(skelFolder.L1, Vector2.new(HeadP.X, HeadP.Y), Vector2.new(TorsoP.X, TorsoP.Y), color, 1.2)
                             UpdateLine(skelFolder.L2, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(LArmP.X, LArmP.Y), color, 1.2)
@@ -272,7 +280,6 @@ RunService.RenderStepped:Connect(function()
                         end
                     end
                     
-                    -- AQUÍ ESTÁ LA MAGIA: Si shouldDraw sigue siendo falso, BORRAMOS TODO
                     if not shouldDraw then
                         for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end
                     end
