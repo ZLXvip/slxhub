@@ -101,18 +101,18 @@ local function FindMurderer()
     return nil
 end
 
---// 4. SISTEMA ESP COMPLETO //--
+--// 4. SISTEMA ESP COMPLETO (FIXED: DEAD SKELETON + GHOST SHERIFF) //--
 local ESP_Shadow_Active = false
 local ESP_2D_Active = false 
 local ESP_Skeleton_Active = false
-local ESP_Tracer_Active = false -- [NUEVO] Variable Tracer
-local ESP_Info_Active = false -- [NUEVO] Variable para Nombres
+local ESP_Tracer_Active = false
+local ESP_Info_Active = false 
 local ESP_Gun_Active = false 
 local ESP_Coin_Active = false 
-local AutoFarm_Active = false -- [NUEVO] Variable para el Farm
-local AutoFarm_Speed = 20 -- [NUEVO] Velocidad inicial
-local AutoKill_Active = false -- [NUEVO] Variable para Auto Kill Murder
-local AutoTPGun_Active = false -- Variable para el modo automático
+local AutoFarm_Active = false 
+local AutoFarm_Speed = 20 
+local AutoKill_Active = false 
+local AutoTPGun_Active = false 
 
 -- CONTENEDOR VISUAL
 local SkeletonGUI = Instance.new("ScreenGui")
@@ -122,7 +122,7 @@ SkeletonGUI.ResetOnSpawn = false
 SkeletonGUI.IgnoreGuiInset = true 
 SkeletonGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Función Maestra para dibujar líneas (Skeletons y Tracers)
+-- Función Maestra para dibujar líneas
 local function UpdateLine(frame, pointA, pointB, color, thickness)
     local distance = (pointA - pointB).Magnitude
     local center = (pointA + pointB) / 2
@@ -136,32 +136,10 @@ local function UpdateLine(frame, pointA, pointB, color, thickness)
     frame.Visible = true
 end
 
-local function GetPlayerRole(player)
-    if not player or not player.Character then return "Innocent" end
-    local char = player.Character
-    local backpack = player.Backpack
-    
-    local hasKnife = char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife"))
-    if not hasKnife then
-        for _, item in pairs(char:GetChildren()) do if item:IsA("Tool") and (item.Name:lower():find("knif") or item.Name:lower():find("cuch")) then hasKnife = true break end end
-        if not hasKnife and backpack then for _, item in pairs(backpack:GetChildren()) do if item:IsA("Tool") and (item.Name:lower():find("knif") or item.Name:lower():find("cuch")) then hasKnife = true break end end end
-    end
-    if hasKnife then return "Murderer" end
-
-    local hasGun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun")) or char:FindFirstChild("Revolver")
-    if not hasGun then
-        for _, item in pairs(char:GetChildren()) do if item:IsA("Tool") and (item.Name:lower():find("gun") or item.Name:lower():find("revol") or item.Name:lower():find("pistol")) then hasGun = true break end end
-        if not hasGun and backpack then for _, item in pairs(backpack:GetChildren()) do if item:IsA("Tool") and (item.Name:lower():find("gun") or item.Name:lower():find("revol") or item.Name:lower():find("pistol")) then hasGun = true break end end end
-    end
-    if hasGun then return "Sheriff" end
-
-    return "Innocent"
-end
-
---/// BUCLE PRINCIPAL ///--
+--/// BUCLE PRINCIPAL DE RENDERIZADO ///--
 RunService.RenderStepped:Connect(function()
     
-    -- [1. AIMBOT]
+    -- [1. AIMBOT RENDER] (Tu lógica visual del Ojo de Dios)
     if getgenv().V1_Active then
         VisualBeam.Color = ColorSequence.new(Color3.fromRGB(0, 170, 255)) 
     elseif V2_Active then
@@ -190,27 +168,14 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
--- [2. LIMPIEZA DE ESP]
+    -- [2. LIMPIEZA GENERAL]
     for _, p in pairs(Players:GetPlayers()) do
         if p.Character then
-            -- Limpieza Shadow
-            if not ESP_Shadow_Active and p.Character:FindFirstChild("SLX_Shadow") then 
-                p.Character.SLX_Shadow:Destroy() 
-            end
-            -- Limpieza Box
-            if not ESP_2D_Active and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart:FindFirstChild("SLX_Box") then 
-                p.Character.HumanoidRootPart.SLX_Box:Destroy() 
-            end
-            -- Limpieza Skeleton
-            if not ESP_Skeleton_Active and SkeletonGUI:FindFirstChild("Skel_"..p.Name) then 
-                SkeletonGUI["Skel_"..p.Name]:Destroy() 
-            end
-            -- Limpieza Tracers GUI
-            if not ESP_Tracer_Active and SkeletonGUI:FindFirstChild("Tracer_"..p.Name) then 
-                SkeletonGUI["Tracer_"..p.Name]:Destroy() 
-            end
-
-            -- Limpieza Tracer Beam (Integrado correctamente aquí)
+            -- Limpieza si desactivas los botones
+            if not ESP_Shadow_Active and p.Character:FindFirstChild("SLX_Shadow") then p.Character.SLX_Shadow:Destroy() end
+            if not ESP_2D_Active and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart:FindFirstChild("SLX_Box") then p.Character.HumanoidRootPart.SLX_Box:Destroy() end
+            if not ESP_Skeleton_Active and SkeletonGUI:FindFirstChild("Skel_"..p.Name) then SkeletonGUI["Skel_"..p.Name]:Destroy() end
+            if not ESP_Tracer_Active and SkeletonGUI:FindFirstChild("Tracer_"..p.Name) then SkeletonGUI["Tracer_"..p.Name]:Destroy() end
             if not ESP_Tracer_Active then
                 local root = p.Character:FindFirstChild("HumanoidRootPart")
                 if root then
@@ -221,48 +186,47 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- [3. ESP JUGADORES - LÓGICA HÍBRIDA (HERO UPDATE)]
+    -- [3. ESP JUGADORES - LÓGICA CORREGIDA]
      if ESP_Shadow_Active or ESP_2D_Active or ESP_Skeleton_Active or ESP_Tracer_Active or ESP_Info_Active then
         for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Head") then
+            -- Checamos que esté vivo (Health > 0) para no dibujar muertos
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
                 
-                -- [[ 🔥 LÓGICA MAESTRA: ROLES + INVENTARIO EN TIEMPO REAL 🔥 ]] --
-                
-                -- 1. Obtenemos datos del "Cerebro" (Quién nació siendo qué)
+                -- [[ 🔥 LÓGICA DE ROLES FIXEADA 🔥 ]] --
                 local serverRole = "Innocent"
                 if getgenv().RoleCache and getgenv().RoleCache[p.Name] then
                     serverRole = getgenv().RoleCache[p.Name].Role 
                 end
 
-                -- 2. Revisamos Inventario (Qué tienen en la mano AHORITA)
-                local hasGun = p.Backpack:FindFirstChild("Gun") or (p.Character and p.Character:FindFirstChild("Gun"))
+                -- Revisión de Inventario
+                local hasGun = p.Backpack:FindFirstChild("Gun") or (p.Character and p.Character:FindFirstChild("Gun")) or p.Backpack:FindFirstChild("Revolver") or (p.Character and p.Character:FindFirstChild("Revolver"))
                 local hasKnife = p.Backpack:FindFirstChild("Knife") or (p.Character and p.Character:FindFirstChild("Knife"))
 
-                -- 3. Decidimos el Color y el Nombre (Aquí está la magia del Héroe)
+                -- Decisión de Color
                 local role = "Innocent"
-                local color = Color3.fromRGB(0, 255, 0) -- Verde (Inocente)
+                local color = Color3.fromRGB(0, 255, 0) -- Verde
 
                 if hasKnife or serverRole == "Murderer" then
                     role = "Murderer"
                     color = Color3.fromRGB(255, 0, 0) -- Rojo
                 
-                elseif hasGun then
-                    -- TIENE LA PISTOLA: ¿Es el original o es un Héroe?
-                    if serverRole == "Sheriff" then
-                        role = "Sheriff"
-                        color = Color3.fromRGB(0, 0, 255) -- Azul (Original)
-                    else
-                        role = "HERO 🔫" -- ¡AQUÍ ESTÁ TU CAMBIO!
-                        color = Color3.fromRGB(255, 255, 0) -- Amarillo (Héroe)
-                    end
-                
                 elseif serverRole == "Sheriff" then
-                    -- Era el Sheriff pero NO tiene la pistola (La tiró o murió)
-                    role = "Sheriff (Dead)"
-                    color = Color3.fromRGB(0, 0, 255) -- Se queda azul para saber quién murió
+                    -- [FIX DEL SHERIFF FANTASMA]
+                    -- Si el Cache dice Sheriff, pero NO tiene pistola (ni en mano ni mochila), 
+                    -- significa que murió o tiró el arma. Lo marcamos como Inocente para no confundir.
+                    if hasGun then
+                        role = "Sheriff"
+                        color = Color3.fromRGB(0, 0, 255) -- Azul
+                    else
+                        role = "Innocent" -- Reset a verde si perdió el arma
+                        color = Color3.fromRGB(0, 255, 0)
+                    end
+                elseif hasGun then
+                    role = "HERO 🔫"
+                    color = Color3.fromRGB(255, 255, 0) -- Amarillo
                 end
 
-                -- A PARTIR DE AQUÍ TODO SE DIBUJA CON EL COLOR QUE ELEGIMOS ARRIBA 👇
+                -- RENDERIZADO
                 
                 -- SHADOW
                 if ESP_Shadow_Active then
@@ -279,17 +243,19 @@ RunService.RenderStepped:Connect(function()
                     if box:FindFirstChild("Frame") then box.Frame.UIStroke.Color = color end
                 end
 
-                -- SKELETON
+                -- SKELETON [FIX: LIMPIEZA VISUAL]
                 if ESP_Skeleton_Active then
                     local skelName = "Skel_"..p.Name
                     local skelFolder = SkeletonGUI:FindFirstChild(skelName)
                     if not skelFolder then skelFolder = Instance.new("Folder", SkeletonGUI); skelFolder.Name = skelName; for i=1, 5 do local l = Instance.new("Frame", skelFolder); l.Name = "L"..i; l.AnchorPoint = Vector2.new(0.5, 0.5); l.ZIndex = 10 end end
+                    
                     local char = p.Character; local Head = char.Head
                     local Torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
                     local LArm = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
                     local RArm = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
                     local LLeg = char:FindFirstChild("LeftFoot") or char:FindFirstChild("Left Leg")
                     local RLeg = char:FindFirstChild("RightFoot") or char:FindFirstChild("Right Leg")
+                    
                     if Head and Torso and LArm and RArm and LLeg and RLeg then
                         local HeadP, Vis1 = Camera:WorldToViewportPoint(Head.Position)
                         local TorsoP, Vis2 = Camera:WorldToViewportPoint(Torso.Position)
@@ -297,17 +263,24 @@ RunService.RenderStepped:Connect(function()
                         local RArmP, Vis4 = Camera:WorldToViewportPoint(RArm.Position)
                         local LLegP, Vis5 = Camera:WorldToViewportPoint(LLeg.Position)
                         local RLegP, Vis6 = Camera:WorldToViewportPoint(RLeg.Position)
+                        
                         if Vis2 then
                             UpdateLine(skelFolder.L1, Vector2.new(HeadP.X, HeadP.Y), Vector2.new(TorsoP.X, TorsoP.Y), color, 1.2)
                             UpdateLine(skelFolder.L2, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(LArmP.X, LArmP.Y), color, 1.2)
                             UpdateLine(skelFolder.L3, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(RArmP.X, RArmP.Y), color, 1.2)
                             UpdateLine(skelFolder.L4, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(LLegP.X, LLegP.Y), color, 1.2)
                             UpdateLine(skelFolder.L5, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(RLegP.X, RLegP.Y), color, 1.2)
-                        else for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end end
-                    else for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end end
+                        else 
+                            -- Si no está visible en cámara, ESCONDER
+                            for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end 
+                        end
+                    else 
+                        -- Si faltan partes del cuerpo, ESCONDER
+                        for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end 
+                    end
                 end
 
-                -- TRACERS (BEAMS)
+                -- TRACERS
                 if ESP_Tracer_Active then
                     local enemyRoot = p.Character.HumanoidRootPart
                     local myChar = LocalPlayer.Character
@@ -326,7 +299,7 @@ RunService.RenderStepped:Connect(function()
                     end
                 end
                 
-                -- [ESP INFO: NOMBRE + DISTANCIA + ROL (ACTUALIZADO)]
+                -- ESP INFO
                 if ESP_Info_Active then
                     local head = p.Character:FindFirstChild("Head")
                     if head then
@@ -341,12 +314,10 @@ RunService.RenderStepped:Connect(function()
                             label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0,0,0)
                         end
                         
-                        -- Calcular Metros
                         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         local dist = 0
                         if myRoot then dist = math.floor((myRoot.Position - p.Character.HumanoidRootPart.Position).Magnitude) end
 
-                        -- Poner Texto
                         local label = infoGui:FindFirstChildOfClass("TextLabel")
                         if label then
                             label.Text = "[".. role .. "] " .. p.Name .. "\n[" .. dist .. "m]"
@@ -359,9 +330,22 @@ RunService.RenderStepped:Connect(function()
                     end
                 end
                 
-            end -- Cierra el if p ~= LocalPlayer
-        end -- Cierra el for loop (LA FIESTA)
-    end -- Cierra el if ESP_Active...
+            else 
+                -- [[ 🔥 FIX IMPORTANTE: SI ESTÁ MUERTO, LIMPIA TODO 🔥 ]] --
+                if p.Character then
+                    -- Borra Box si murió
+                    if p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart:FindFirstChild("SLX_Box") then
+                        p.Character.HumanoidRootPart.SLX_Box:Destroy()
+                    end
+                    -- Borra Esqueleto de la pantalla si murió
+                    local skelName = "Skel_"..p.Name
+                    if SkeletonGUI:FindFirstChild(skelName) then
+                        for _, l in pairs(SkeletonGUI[skelName]:GetChildren()) do l.Visible = false end
+                    end
+                end
+            end 
+        end 
+    end 
 
     -- [4. LOGICA ESP GUN DROP (2D + HIGHLIGHT)]
     local GunDrop = Workspace:FindFirstChild("GunDrop", true) 
@@ -393,7 +377,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-end) 
+end)
 
 local function GetNearestPlayer()
     local closestPlayer = nil
