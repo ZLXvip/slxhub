@@ -101,11 +101,11 @@ local function FindMurderer()
     return nil
 end
 
---// 4. SISTEMA ESP COMPLETO (FIXED: SKELETON RESET + ROLECACHE PRIORITY) //--
+--// 4. SISTEMA ESP COMPLETO (FIXED: GHOST SKELETON + CLEANUP) //--
 local ESP_Shadow_Active = false
 local ESP_2D_Active = false 
 local ESP_Skeleton_Active = false
-local ESP_Tracer_Active = false
+local ESP_Tracer_Active = false 
 local ESP_Info_Active = false 
 local ESP_Gun_Active = false 
 local ESP_Coin_Active = false 
@@ -139,7 +139,7 @@ end
 --/// BUCLE PRINCIPAL DE RENDERIZADO ///--
 RunService.RenderStepped:Connect(function()
     
-    -- [1. AIMBOT RENDER] (Tu lógica visual del Ojo de Dios)
+    -- [1. AIMBOT RENDER] (Ojo de Dios)
     if getgenv().V1_Active then
         VisualBeam.Color = ColorSequence.new(Color3.fromRGB(0, 170, 255)) 
     elseif V2_Active then
@@ -168,62 +168,61 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- [2. LIMPIEZA GENERAL]
-    -- Esto borra los ESP si desactivas los botones desde el menú
+    -- [2. LIMPIEZA DE BASURA (GARBAGE COLLECTOR)]
+    -- Si un jugador se salió del server, borramos su esqueleto pegado
+    for _, folder in pairs(SkeletonGUI:GetChildren()) do
+        local playerName = folder.Name:sub(6) -- Quitamos "Skel_"
+        if not Players:FindFirstChild(playerName) then
+            folder:Destroy()
+        end
+    end
+
+    -- Limpieza manual si apagas los botones
     if not ESP_Shadow_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("SLX_Shadow") then v.Character.SLX_Shadow:Destroy() end end end
     if not ESP_2D_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character.HumanoidRootPart:FindFirstChild("SLX_Box") then v.Character.HumanoidRootPart.SLX_Box:Destroy() end end end
     if not ESP_Tracer_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then if v.Character.HumanoidRootPart:FindFirstChild("SLX_Beam") then v.Character.HumanoidRootPart.SLX_Beam:Destroy() end end end end
     
-    -- [3. ESP JUGADORES - BUCLE MAESTRO]
+    -- [3. ESP JUGADORES - BUCLE MAESTRO FIXEADO]
     if ESP_Shadow_Active or ESP_2D_Active or ESP_Skeleton_Active or ESP_Tracer_Active or ESP_Info_Active then
         for _, p in pairs(Players:GetPlayers()) do
             local char = p.Character
             
             -- [CONDICIÓN DE VIDA ESTRICTA]
-            -- Si no existe, no tiene vida o está muerto, LIMPIAMOS SU SKELETON Y CONTINUAMOS
-            if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Head") or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
-                -- Limpieza forzada de Skeleton si murió
+            -- Si no tiene vida, forzamos apagado de Skeleton y continuamos
+            if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
                 if SkeletonGUI:FindFirstChild("Skel_"..p.Name) then
                     for _, line in pairs(SkeletonGUI["Skel_"..p.Name]:GetChildren()) do line.Visible = false end
                 end
-                -- Limpieza forzada de Box si murió
                 if char and char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart:FindFirstChild("SLX_Box") then
                     char.HumanoidRootPart.SLX_Box:Destroy()
                 end
-                continue -- Saltamos al siguiente jugador
+                continue 
             end
 
-            -- Si llegamos aquí, el jugador ESTÁ VIVO. Procedemos.
-            if p ~= LocalPlayer then
+            -- Si está vivo y no soy yo:
+            if p ~= LocalPlayer and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Head") then
                 
-                -- [[ 🔥 LÓGICA DE ROLES (RoleCache Priority) 🔥 ]] --
+                -- ROLES (Lógica Aprobada)
                 local serverRole = "Innocent"
                 if getgenv().RoleCache and getgenv().RoleCache[p.Name] then
                     serverRole = getgenv().RoleCache[p.Name].Role 
                 end
 
-                -- Revisión de Inventario (Backup visual)
-                local hasGun = p.Backpack:FindFirstChild("Gun") or (char and char:FindFirstChild("Gun")) or p.Backpack:FindFirstChild("Revolver") or (char and char:FindFirstChild("Revolver"))
-                local hasKnife = p.Backpack:FindFirstChild("Knife") or (char and char:FindFirstChild("Knife"))
+                local hasGun = p.Backpack:FindFirstChild("Gun") or (char:FindFirstChild("Gun")) or p.Backpack:FindFirstChild("Revolver") or (char:FindFirstChild("Revolver"))
+                local hasKnife = p.Backpack:FindFirstChild("Knife") or (char:FindFirstChild("Knife"))
 
-                -- Decisión de Color
                 local role = "Innocent"
-                local color = Color3.fromRGB(0, 255, 0) -- Verde
+                local color = Color3.fromRGB(0, 255, 0) 
 
                 if hasKnife or serverRole == "Murderer" then
                     role = "Murderer"
-                    color = Color3.fromRGB(255, 0, 0) -- Rojo
-                
+                    color = Color3.fromRGB(255, 0, 0) 
                 elseif serverRole == "Sheriff" then
-                    -- AQUÍ ESTÁ EL FIX: Si el RoleCache dice Sheriff, ES SHERIFF (Azul).
-                    -- No me importa si tiene el arma o no.
                     role = "Sheriff"
                     color = Color3.fromRGB(0, 0, 255) 
-                
                 elseif hasGun then
-                    -- Si no era Sheriff en Cache pero trae pistola (Hero)
                     role = "HERO 🔫"
-                    color = Color3.fromRGB(255, 255, 0) -- Amarillo
+                    color = Color3.fromRGB(255, 255, 0)
                 end
 
                 -- RENDERIZADO
@@ -243,7 +242,7 @@ RunService.RenderStepped:Connect(function()
                     if box:FindFirstChild("Frame") then box.Frame.UIStroke.Color = color end
                 end
 
-                -- [[ SKELETON FIXEADO ]]
+                -- [[ SKELETON: FIX "NO PEGADO" ]]
                 if ESP_Skeleton_Active then
                     local skelName = "Skel_"..p.Name
                     local skelFolder = SkeletonGUI:FindFirstChild(skelName)
@@ -256,7 +255,8 @@ RunService.RenderStepped:Connect(function()
                     local LLeg = char:FindFirstChild("LeftFoot") or char:FindFirstChild("Left Leg")
                     local RLeg = char:FindFirstChild("RightFoot") or char:FindFirstChild("Right Leg")
                     
-                    local drawn = false
+                    local shouldDraw = false -- POR DEFECTO ESTÁ APAGADO
+                    
                     if Head and Torso and LArm and RArm and LLeg and RLeg then
                         local HeadP, Vis1 = Camera:WorldToViewportPoint(Head.Position)
                         local TorsoP, Vis2 = Camera:WorldToViewportPoint(Torso.Position)
@@ -265,8 +265,8 @@ RunService.RenderStepped:Connect(function()
                         local LLegP, Vis5 = Camera:WorldToViewportPoint(LLeg.Position)
                         local RLegP, Vis6 = Camera:WorldToViewportPoint(RLeg.Position)
                         
-                        if Vis2 then -- Solo si el torso está en pantalla
-                            drawn = true
+                        if Vis2 then -- Solo si está visible en pantalla
+                            shouldDraw = true
                             UpdateLine(skelFolder.L1, Vector2.new(HeadP.X, HeadP.Y), Vector2.new(TorsoP.X, TorsoP.Y), color, 1.2)
                             UpdateLine(skelFolder.L2, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(LArmP.X, LArmP.Y), color, 1.2)
                             UpdateLine(skelFolder.L3, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(RArmP.X, RArmP.Y), color, 1.2)
@@ -275,8 +275,8 @@ RunService.RenderStepped:Connect(function()
                         end
                     end
                     
-                    -- Si no se pudo dibujar (fuera de cámara), APAGAMOS TODO
-                    if not drawn then
+                    -- AQUÍ ESTÁ LA MAGIA: Si shouldDraw sigue siendo falso, BORRAMOS TODO
+                    if not shouldDraw then
                         for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end
                     end
                 end
