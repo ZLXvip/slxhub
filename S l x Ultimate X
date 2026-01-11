@@ -1287,7 +1287,7 @@ task.spawn(function()
                 ManualTPGun() -- Llama al "cerebro" que ya tenemos arriba
                 
                 -- Esperamos 5 segundos después de recogerla para que no bugee el TP
-                task.wait(3) 
+                task.wait(0.2) 
             end
         end
     end
