@@ -98,7 +98,7 @@ local function FindMurderer()
     return nil
 end
 
---// 4. SISTEMA ESP COMPLETO (FIXED: SHERIFF LOGIC V3 + SKELETON CLEANUP) //--
+--// 4. SISTEMA ESP COMPLETO (FIXED: GHOST SKELETON + CLEANUP) //--
 local ESP_Shadow_Active = false
 local ESP_2D_Active = false 
 local ESP_Skeleton_Active = false
@@ -136,7 +136,7 @@ end
 --/// BUCLE PRINCIPAL DE RENDERIZADO ///--
 RunService.RenderStepped:Connect(function()
     
-    -- [1. AIMBOT RENDER]
+    -- [1. AIMBOT RENDER] (Ojo de Dios)
     if getgenv().V1_Active then
         VisualBeam.Color = ColorSequence.new(Color3.fromRGB(0, 170, 255)) 
     elseif V2_Active then
@@ -152,6 +152,7 @@ RunService.RenderStepped:Connect(function()
         
         if murdChar and myChar and murdChar:FindFirstChild("Head") and myChar:FindFirstChild("HumanoidRootPart") then
             getgenv().CurrentTarget = murdChar.HumanoidRootPart 
+            
             Att0.Parent = myChar.HumanoidRootPart
             Att1.Parent = getgenv().CurrentTarget
             VisualBeam.Parent = myChar.HumanoidRootPart
@@ -164,25 +165,27 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- [2. LIMPIEZA DE BASURA]
+    -- [2. LIMPIEZA DE BASURA (GARBAGE COLLECTOR)]
+    -- Si un jugador se salió del server, borramos su esqueleto pegado
     for _, folder in pairs(SkeletonGUI:GetChildren()) do
-        local playerName = folder.Name:sub(6) 
-        if not Players:FindFirstChild(playerName) then folder:Destroy() end
+        local playerName = folder.Name:sub(6) -- Quitamos "Skel_"
+        if not Players:FindFirstChild(playerName) then
+            folder:Destroy()
+        end
     end
 
+    -- Limpieza manual si apagas los botones
     if not ESP_Shadow_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("SLX_Shadow") then v.Character.SLX_Shadow:Destroy() end end end
     if not ESP_2D_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character.HumanoidRootPart:FindFirstChild("SLX_Box") then v.Character.HumanoidRootPart.SLX_Box:Destroy() end end end
     if not ESP_Tracer_Active then for _,v in pairs(Players:GetPlayers()) do if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then if v.Character.HumanoidRootPart:FindFirstChild("SLX_Beam") then v.Character.HumanoidRootPart.SLX_Beam:Destroy() end end end end
     
-    -- [3. ESP JUGADORES - BUCLE MAESTRO]
+    -- [3. ESP JUGADORES - BUCLE MAESTRO FIXEADO]
     if ESP_Shadow_Active or ESP_2D_Active or ESP_Skeleton_Active or ESP_Tracer_Active or ESP_Info_Active then
-        -- Chequeo rápido: ¿Existe la pistola tirada en el mapa?
-        local GunDropped = Workspace:FindFirstChild("GunDrop", true) ~= nil
-
         for _, p in pairs(Players:GetPlayers()) do
             local char = p.Character
             
-            -- [CONDICIÓN DE VIDA: SI ESTÁ MUERTO, SE APAGA TODO]
+            -- [CONDICIÓN DE VIDA ESTRICTA]
+            -- Si no tiene vida, forzamos apagado de Skeleton y continuamos
             if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then
                 if SkeletonGUI:FindFirstChild("Skel_"..p.Name) then
                     for _, line in pairs(SkeletonGUI["Skel_"..p.Name]:GetChildren()) do line.Visible = false end
@@ -193,9 +196,10 @@ RunService.RenderStepped:Connect(function()
                 continue 
             end
 
+            -- Si está vivo y no soy yo:
             if p ~= LocalPlayer and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Head") then
                 
-                -- [[ 🔥 DETECCIÓN DE ROLES DEFINITIVA 🔥 ]] --
+                -- ROLES (Lógica Aprobada)
                 local serverRole = "Innocent"
                 if getgenv().RoleCache and getgenv().RoleCache[p.Name] then
                     serverRole = getgenv().RoleCache[p.Name].Role 
@@ -205,32 +209,14 @@ RunService.RenderStepped:Connect(function()
                 local hasKnife = p.Backpack:FindFirstChild("Knife") or (char:FindFirstChild("Knife"))
 
                 local role = "Innocent"
-                local color = Color3.fromRGB(0, 255, 0) -- Verde
+                local color = Color3.fromRGB(0, 255, 0) 
 
                 if hasKnife or serverRole == "Murderer" then
                     role = "Murderer"
-                    color = Color3.fromRGB(255, 0, 0) -- Rojo
-                
+                    color = Color3.fromRGB(255, 0, 0) 
                 elseif serverRole == "Sheriff" then
-                    -- [LÓGICA HÍBRIDA]
-                    if hasGun then
-                        -- Si tiene el arma, A HUEVO es Sheriff.
-                        role = "Sheriff"
-                        color = Color3.fromRGB(0, 0, 255) 
-                    else
-                        -- Si NO tiene el arma, checamos el suelo.
-                        if GunDropped then
-                            -- Si el arma está en el suelo y él no la tiene = MURIÓ (Verde)
-                            role = "Innocent"
-                            color = Color3.fromRGB(0, 255, 0)
-                        else
-                            -- Si el arma NO está en el suelo y él no la tiene = LA TIENE GUARDADA (Azul)
-                            -- Esta es la línea que arregla el inicio de la partida.
-                            role = "Sheriff"
-                            color = Color3.fromRGB(0, 0, 255)
-                        end
-                    end
-                
+                    role = "Sheriff"
+                    color = Color3.fromRGB(0, 0, 255) 
                 elseif hasGun then
                     role = "HERO 🔫"
                     color = Color3.fromRGB(255, 255, 0)
@@ -253,7 +239,7 @@ RunService.RenderStepped:Connect(function()
                     if box:FindFirstChild("Frame") then box.Frame.UIStroke.Color = color end
                 end
 
-                -- SKELETON
+                -- [[ SKELETON: FIX "NO PEGADO" ]]
                 if ESP_Skeleton_Active then
                     local skelName = "Skel_"..p.Name
                     local skelFolder = SkeletonGUI:FindFirstChild(skelName)
@@ -266,11 +252,17 @@ RunService.RenderStepped:Connect(function()
                     local LLeg = char:FindFirstChild("LeftFoot") or char:FindFirstChild("Left Leg")
                     local RLeg = char:FindFirstChild("RightFoot") or char:FindFirstChild("Right Leg")
                     
-                    local shouldDraw = false 
+                    local shouldDraw = false -- POR DEFECTO ESTÁ APAGADO
+                    
                     if Head and Torso and LArm and RArm and LLeg and RLeg then
                         local HeadP, Vis1 = Camera:WorldToViewportPoint(Head.Position)
                         local TorsoP, Vis2 = Camera:WorldToViewportPoint(Torso.Position)
-                        if Vis2 then 
+                        local LArmP, Vis3 = Camera:WorldToViewportPoint(LArm.Position)
+                        local RArmP, Vis4 = Camera:WorldToViewportPoint(RArm.Position)
+                        local LLegP, Vis5 = Camera:WorldToViewportPoint(LLeg.Position)
+                        local RLegP, Vis6 = Camera:WorldToViewportPoint(RLeg.Position)
+                        
+                        if Vis2 then -- Solo si está visible en pantalla
                             shouldDraw = true
                             UpdateLine(skelFolder.L1, Vector2.new(HeadP.X, HeadP.Y), Vector2.new(TorsoP.X, TorsoP.Y), color, 1.2)
                             UpdateLine(skelFolder.L2, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(LArmP.X, LArmP.Y), color, 1.2)
@@ -279,19 +271,28 @@ RunService.RenderStepped:Connect(function()
                             UpdateLine(skelFolder.L5, Vector2.new(TorsoP.X, TorsoP.Y), Vector2.new(RLegP.X, RLegP.Y), color, 1.2)
                         end
                     end
-                    if not shouldDraw then for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end end
+                    
+                    -- AQUÍ ESTÁ LA MAGIA: Si shouldDraw sigue siendo falso, BORRAMOS TODO
+                    if not shouldDraw then
+                        for _, l in pairs(skelFolder:GetChildren()) do l.Visible = false end
+                    end
                 end
 
                 -- TRACERS
                 if ESP_Tracer_Active then
                     local enemyRoot = char.HumanoidRootPart
                     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
                     if enemyRoot and myRoot then
                         local att = enemyRoot:FindFirstChild("SLX_Att") or Instance.new("Attachment", enemyRoot); att.Name = "SLX_Att"
                         local beam = enemyRoot:FindFirstChild("SLX_Beam")
                         if not beam then beam = Instance.new("Beam", enemyRoot); beam.Name = "SLX_Beam"; beam.FaceCamera = true; beam.Width0 = 0.03; beam.Width1 = 0.05; beam.Transparency = NumberSequence.new(0.1) end
                         local myAtt = myRoot:FindFirstChild("SLX_MyAtt") or Instance.new("Attachment", myRoot); myAtt.Name = "SLX_MyAtt"
-                        beam.Attachment0 = myAtt; beam.Attachment1 = att; beam.Color = ColorSequence.new(color); beam.Enabled = true
+                        
+                        beam.Attachment0 = myAtt
+                        beam.Attachment1 = att
+                        beam.Color = ColorSequence.new(color)
+                        beam.Enabled = true
                     end
                 end
                 
@@ -300,19 +301,34 @@ RunService.RenderStepped:Connect(function()
                     local head = char:FindFirstChild("Head")
                     if head then
                         local infoGui = head:FindFirstChild("SLX_Info")
-                        if not infoGui then infoGui = Instance.new("BillboardGui", head); infoGui.Name = "SLX_Info"; infoGui.Size = UDim2.new(0, 100, 0, 50); infoGui.StudsOffset = Vector3.new(0, 3.5, 0); infoGui.AlwaysOnTop = true; local label = Instance.new("TextLabel", infoGui); label.BackgroundTransparency = 1; label.Size = UDim2.new(1, 0, 1, 0); label.Font = Enum.Font.GothamBold; label.TextSize = 12; label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0,0,0) end
+                        if not infoGui then
+                            infoGui = Instance.new("BillboardGui", head)
+                            infoGui.Name = "SLX_Info"; infoGui.Size = UDim2.new(0, 100, 0, 50)
+                            infoGui.StudsOffset = Vector3.new(0, 3.5, 0); infoGui.AlwaysOnTop = true
+                            local label = Instance.new("TextLabel", infoGui)
+                            label.BackgroundTransparency = 1; label.Size = UDim2.new(1, 0, 1, 0)
+                            label.Font = Enum.Font.GothamBold; label.TextSize = 12
+                            label.TextStrokeTransparency = 0; label.TextStrokeColor3 = Color3.new(0,0,0)
+                        end
+                        
                         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                         local dist = 0
                         if myRoot then dist = math.floor((myRoot.Position - char.HumanoidRootPart.Position).Magnitude) end
+
                         local label = infoGui:FindFirstChildOfClass("TextLabel")
-                        if label then label.Text = "[".. role .. "] " .. p.Name .. "\n[" .. dist .. "m]"; label.TextColor3 = color end
+                        if label then
+                            label.Text = "[".. role .. "] " .. p.Name .. "\n[" .. dist .. "m]"
+                            label.TextColor3 = color 
+                        end
                     end
-                elseif not ESP_Info_Active then if char.Head:FindFirstChild("SLX_Info") then char.Head.SLX_Info:Destroy() end end
+                elseif not ESP_Info_Active then
+                    if char.Head:FindFirstChild("SLX_Info") then char.Head.SLX_Info:Destroy() end
+                end
             end 
         end 
     end 
 
-    -- [4. LOGICA ESP GUN DROP]
+    -- [4. LOGICA ESP GUN DROP (2D + HIGHLIGHT)]
     local GunDrop = Workspace:FindFirstChild("GunDrop", true) 
     if ESP_Gun_Active and GunDrop then
         local highlight = GunDrop:FindFirstChild("SLX_GunESP")
@@ -324,7 +340,7 @@ RunService.RenderStepped:Connect(function()
         if GunDrop:FindFirstChild("SLX_GunText") then GunDrop.SLX_GunText:Destroy() end
     end
 
-    -- [5. LOGICA ESP COINS]
+    -- [5. LOGICA ESP COINS 2D]
     local CoinContainer = Workspace:FindFirstChild("CoinContainer", true)
     if CoinContainer then
         for _, coin in pairs(CoinContainer:GetChildren()) do
