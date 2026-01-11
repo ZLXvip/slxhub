@@ -1281,7 +1281,7 @@ end)
 --// BUCLE DE AUTO TP: VIGILA LA PISTOLA TODO EL TIEMPO //--
 task.spawn(function()
     while true do
-        task.wait(0.2) -- Revisa 2 veces por segundo para no dar lag
+        task.wait(0.5) -- Revisa 2 veces por segundo para no dar lag
         if getgenv().AutoTPGun_Active then
             -- Usamos la búsqueda de YARHM
             local gunDrop = Workspace:FindFirstChild("GunDrop", true) or Workspace:FindFirstChild("PistolDrop", true)
@@ -1290,7 +1290,7 @@ task.spawn(function()
                 ManualTPGun() -- Llama al "cerebro" que ya tenemos arriba
                 
                 -- Esperamos 5 segundos después de recogerla para que no bugee el TP
-                task.wait(2) 
+                task.wait(3) 
             end
         end
     end
