@@ -653,6 +653,8 @@ AddToggle(VisualPage, "PLAYER TRACERS", function(v) _G.Tracers_Enabled = v end)
 AddToggle(VisualPage, "NIGHT VISION v1", function(v) _G.NightVision_Enabled = v end)
 
 -- Combat
+--// BLOQUE 4: EL TOGGLE //--
+AddToggle(CombatPage, "SENTINEL AIMBOT (LOCK-ON)", function(v) _G.Aimbot_Enabled = v end)
 AddToggle(CombatPage, "BIG HEAD HITBOX (10x)", function(v)  _G.Hitbox_Enabled = v end)
 -- Llamada en el menú:
 AddHitboxInput(CombatPage, "AJUSTAR HITBOX (ESCRIBIR)")
@@ -721,4 +723,21 @@ task.spawn(function()
     TweenService:Create(Main, TweenInfo.new(1.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
         Position = UDim2.new(0.5, -190, 0.5, -120)
     }):Play()
+end)
+
+--// BLOQUE 3: BUCLE DE EJECUCIÓN //--
+RunService.RenderStepped:Connect(function()
+    -- Actualizar Círculo FOV
+    FOVCircle.Visible = _G.Aimbot_Enabled
+    FOVCircle.Radius = _G.Aimbot_FOV
+    FOVCircle.Position = Vector2.new(Mouse.X, Mouse.Y + 36) -- Ajuste de offset de Roblox
+
+    if _G.Aimbot_Enabled then
+        local target = GetClosestTarget()
+        -- Solo se activa si dejas presionado el Click Derecho
+        if target and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+            local targetPos = CFrame.new(Cam.CFrame.Position, target.Position)
+            Cam.CFrame = Cam.CFrame:Lerp(targetPos, 1/_G.Aimbot_Smooth)
+        end
+    end
 end)
