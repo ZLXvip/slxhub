@@ -353,6 +353,29 @@ end
 for _, p in pairs(game.Players:GetPlayers()) do AplicarESPTexto(p) end
 game.Players.PlayerAdded:Connect(AplicarESPTexto)
 
+--// BLOQUE 2: LÓGICA DE RASTREO //--
+local function GetClosestTarget()
+    local target = nil
+    local shortestDist = _G.Aimbot_FOV
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+            -- Team Check (Opcional, quítalo si es todos contra todos)
+            if v.Team == LocalPlayer.Team then continue end
+
+            local pos, onScreen = Cam:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+            if onScreen then
+                local mouseDist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                if mouseDist < shortestDist then
+                    shortestDist = mouseDist
+                    target = v.Character.HumanoidRootPart
+                end
+            end
+        end
+    end
+    return target
+end
+
 --// ========================================== //--
 --//      MOTOR HITBOX MODO DIOS (NO BLIND SPOTS)   //--
 --// ========================================== //--
