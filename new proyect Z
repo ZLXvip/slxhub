@@ -10,6 +10,21 @@ local Stats = game:GetService("Stats")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+--// BLOQUE 1: RECURSOS DEL SISTEMA //--
+local Cam = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+_G.Aimbot_Enabled = false
+_G.Aimbot_FOV = 150 -- Tamaño del círculo
+_G.Aimbot_Smooth = 5 -- Suavizado (1 es instantáneo)
+
+-- El FOV Visual (El círculo que no te salía)
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+FOVCircle.Filled = false
+FOVCircle.Transparency = 0.8
+FOVCircle.Color = T.Acc
+
 --// CONFIGURACIÓN DE TEMA PREMIUM //--
 local T = {
     Main = Color3.fromRGB(10, 10, 15),
