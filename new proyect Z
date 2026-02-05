@@ -14,18 +14,12 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Cam = workspace.CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 
+-- Variables de control
 _G.Aimbot_Enabled = false
-_G.Aimbot_FOV = 150 -- Tamaño del círculo
-_G.Aimbot_Smooth = 5 -- Suavizado (1 es instantáneo)
+_G.Aimbot_FOV = 150 
+_G.Aimbot_Smooth = 5 
 
--- El FOV Visual (El círculo que no te salía)
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5
-FOVCircle.Filled = false
-FOVCircle.Transparency = 0.8
-FOVCircle.Color = T.Acc
-
---// CONFIGURACIÓN DE TEMA PREMIUM //--
+--// CONFIGURACIÓN DE TEMA PREMIUM (Movido arriba para evitar el error de nil) //--
 local T = {
     Main = Color3.fromRGB(10, 10, 15),
     Side = Color3.fromRGB(15, 15, 22),
@@ -38,6 +32,13 @@ local T = {
     FontMid = Enum.Font.GothamMedium,
     Trans = 0.25 
 }
+
+-- Ahora sí podemos crear el círculo porque 'T' ya existe
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+FOVCircle.Filled = false
+FOVCircle.Transparency = 0.8
+FOVCircle.Color = T.Acc -- <--- AQUÍ YA NO DARÁ ERROR
 
 -- Cleanup previo
 if PlayerGui:FindFirstChild("SLX_PREMIUM_GHOST") then 
