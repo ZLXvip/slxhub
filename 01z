@@ -751,7 +751,7 @@ Visuals:Toggle("Esp v3", function(v)
 end)
 
 --// BOTÓN PARA ACTIVAR NOMBRES Y DISTANCIA //--
-Visuals:Toggle("Esp v4", function(v)
+Visuals:Toggle("Esp v4 no fix", function(v)
     _G.ESP_Text_Enabled = v
 end)
 
