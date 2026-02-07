@@ -478,6 +478,79 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
+--// MOTOR FLY SUPERMAN X (FIX MOVIMIENTO AL VACÍO)
+task.spawn(function()
+    local p = game.Players.LocalPlayer
+    local runService = game:GetService("RunService")
+    local uis = game:GetService("UserInputService")
+    local staticY = 0
+    local active = false
+
+    runService.Stepped:Connect(function()
+        local char = p.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+        if _G.Prueba_Enabled and hrp and hum then
+            if not active then
+                staticY = hrp.Position.Y
+                active = true
+            end
+
+            hum:ChangeState(Enum.HumanoidStateType.Physics)
+            hum.PlatformStand = true
+            
+            -- FIX: Noclip para no chocar contigo mismo
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+            
+            local cam = workspace.CurrentCamera.CFrame
+            local speed = (_G.Pruebax_Size or 16) / 7
+            
+            -- POSE SUPERMAN FIJA
+            hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.LookVector) * CFrame.Angles(math.rad(-90), 0, 0)
+            
+            -- MOVIMIENTO CORREGIDO (Sin irse al vacío)
+            local moveDir = Vector3.new(0,0,0)
+            -- Usamos LookVector plano para que no te jale hacia abajo
+            local look = cam.LookVector
+            local right = cam.RightVector
+            
+            if uis:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + look end
+            if uis:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - look end
+            if uis:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - right end
+            if uis:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + right end
+            
+            if moveDir.Magnitude > 0 then
+                -- Movemos el CFrame pero mantenemos la altura controlada
+                hrp.CFrame = (hrp.CFrame + (moveDir * speed))
+                staticY = hrp.Position.Y 
+            else
+                -- CONGELACIÓN TOTAL: Aquí es donde evitamos que bajes al vacío
+                hrp.CFrame = CFrame.new(hrp.Position.X, staticY, hrp.Position.Z) * hrp.CFrame.Rotation
+            end
+            
+            -- BYPASS: Velocidad en 0 para engañar al Anti-Cheat
+            hrp.Velocity = Vector3.new(0, 0, 0)
+            hrp.RotVelocity = Vector3.new(0, 0, 0)
+        else
+            if active then
+                active = false
+                if hum then
+                    hum.PlatformStand = false
+                    hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+                end
+                if char then
+                    for _, part in pairs(char:GetChildren()) do
+                        if part:IsA("BasePart") then part.CanCollide = true end
+                    end
+                end
+            end
+        end
+    end)
+end)
+
 if CoreGui:FindFirstChild("SLX_Final") then
     CoreGui.SLX_Final:Destroy()
 end
@@ -694,7 +767,7 @@ local Settings = library:Window("Settings")
 local Zslx = library:Window("                   Z  ")
 
 -- Aimbot con todos los juguetes
-local AimMenu = Combat:Toggle("Aimbot Z", function(v) _G.Aimbot = v end)
+local AimMenu = Combat:Toggle("Aimbot Master", function(v) _G.Aimbot = v end)
 AimMenu:AddSubToggle("Team Check", function(v) _G.TeamCheck = v end)
 AimMenu:AddSubToggle("Wall Check", function(v) _G.WallCheck = v end)
 AimMenu:AddSubToggle("Show FOV", function(v) _G.FOVVisible = v end)
@@ -704,22 +777,23 @@ AimMenu:AddSubInput("Smoothness", 1, 1, 10, function(v) _G.Smoothness = v end)
 
 _G.HitboxTeamCheck = false 
 
-local HitboxMenu = Combat:Toggle("Hitbox", function(v)
+local HitboxMenu = Combat:Toggle("Hitbox Expander", function(v)
     _G.Hitbox_Enabled = v
 end)
 
-HitboxMenu:AddSubInput("Size", _G.Hitbox_Size, 1, 50, function(v)
+HitboxMenu:AddSubInput("TAMAÑO", _G.Hitbox_Size, 1, 50, function(v)
     _G.Hitbox_Size = v
 end)
 
 --// Fake Lag / Hard Freeze (Sin botón +) //--
-Combat:Toggle("(Fake Lag)", function(v)
+Combat:Toggle("Hard Freeze (Fake Lag)", function(v)
     _G.FakeLag_Enabled = v
 end)
+
 -------------------------------
 
 --// BOTÓN TP KILL CON FILTROS
-local TPMenu = Combat:Toggle("TP Kills", function(v)
+local TPMenu = Combat:Toggle("TP Kill", function(v)
     _G.TPKill_All = v
 end)
 
@@ -732,8 +806,8 @@ end)
 TPMenu:AddSubToggle("Anti Aura", function(v)
     _G.AntiAura = v
 end)
-
----------- Visual-------------------
+---------------------------------------
+--------------------------------------
 
 --// BOTÓN PARA ACTIVAR ESP Y CONECTAR AL MOTOR //--
 local ESPBtn = Visuals:Toggle("Esp v1", function(v)
@@ -751,7 +825,7 @@ Visuals:Toggle("Esp v3", function(v)
 end)
 
 --// BOTÓN PARA ACTIVAR NOMBRES Y DISTANCIA //--
-Visuals:Toggle("Esp v4 no fix", function(v)
+Visuals:Toggle("Esp v4", function(v)
     _G.ESP_Text_Enabled = v
 end)
 
@@ -767,16 +841,18 @@ end)
 
 ------------------ Z ----------------------
 
-local PruebaMenu = Zslx:Toggle("Fly", function(v)
-    _G.Prueba_Enabled = v
-end)
-
-PruebaMenu:AddSubInput("Speed", _G.Prueba_Size, 1, 50, function(v)
-    _G.Pruebax_Size = v
-end)
-
 -- Settings
 Settings:Input("ANCHO VENTANA", globalWidth, 50, 400, function(v) globalWidth = v; ReorganizarTodo() end)
 Settings:Input("ESPACIADO", globalPadding, 0, 50, function(v) globalPadding = v; ReorganizarTodo() end)
 
-print("SLX ULTIMATE: Aimbot & Auto-Plus Loaded")
+------------ mas toggles y funciones etc anti ban ----------
+
+local PruebaMenu = Zslx:Toggle("Fly Superman Fixed", function(v)
+    _G.Prueba_Enabled = v
+end)
+
+PruebaMenu:AddSubInput("Velocidad", 50, 1, 300, function(v)
+    _G.Pruebax_Size = v
+end)
+
+----------------------------------------------------
