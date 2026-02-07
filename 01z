@@ -694,7 +694,7 @@ local Settings = library:Window("Settings")
 local Zslx = library:Window("                   Z  ")
 
 -- Aimbot con todos los juguetes
-local AimMenu = Combat:Toggle("Aimbot Master", function(v) _G.Aimbot = v end)
+local AimMenu = Combat:Toggle("Aimbot Z", function(v) _G.Aimbot = v end)
 AimMenu:AddSubToggle("Team Check", function(v) _G.TeamCheck = v end)
 AimMenu:AddSubToggle("Wall Check", function(v) _G.WallCheck = v end)
 AimMenu:AddSubToggle("Show FOV", function(v) _G.FOVVisible = v end)
@@ -704,22 +704,22 @@ AimMenu:AddSubInput("Smoothness", 1, 1, 10, function(v) _G.Smoothness = v end)
 
 _G.HitboxTeamCheck = false 
 
-local HitboxMenu = Combat:Toggle("Hitbox Expander", function(v)
+local HitboxMenu = Combat:Toggle("Hitbox", function(v)
     _G.Hitbox_Enabled = v
 end)
 
-HitboxMenu:AddSubInput("TAMAÑO", _G.Hitbox_Size, 1, 50, function(v)
+HitboxMenu:AddSubInput("Size", _G.Hitbox_Size, 1, 50, function(v)
     _G.Hitbox_Size = v
 end)
 
 --// Fake Lag / Hard Freeze (Sin botón +) //--
-Combat:Toggle("Hard Freeze (Fake Lag)", function(v)
+Combat:Toggle("(Fake Lag)", function(v)
     _G.FakeLag_Enabled = v
 end)
 -------------------------------
 
 --// BOTÓN TP KILL CON FILTROS
-local TPMenu = Combat:Toggle("TP Kill", function(v)
+local TPMenu = Combat:Toggle("TP Kills", function(v)
     _G.TPKill_All = v
 end)
 
