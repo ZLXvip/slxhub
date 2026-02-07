@@ -420,9 +420,14 @@ task.spawn(function()
     end
 end)
 
---// MOTOR BRING KILL (ALL / TARGET SYSTEM) //--
+--// CONFIGURACIÓN INICIAL
+_G.TPKill_All = false
+_G.TeamCheck = true 
+_G.AntiAura = true -- Activado por defecto para evitar estorbos
+
+--// EL CEREBRO DEL TP KILL CON FILTRO DE AURA
 game:GetService("RunService").RenderStepped:Connect(function()
-    if _G.BringKill_Enabled and _G.BringTarget ~= "None" then
+    if _G.TPKill_All then
         local p = game.Players.LocalPlayer
         local char = p.Character
         if not char or not char:FindFirstChild("HumanoidRootPart") then return end
@@ -430,30 +435,42 @@ game:GetService("RunService").RenderStepped:Connect(function()
         -- Punto exacto frente a ti
         local targetPos = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, -5)
 
-        for _, target in pairs(game.Players:GetPlayers()) do
-            -- Filtro: Que no sea yo y que coincida con la selección (o que sea "All")
-            if target ~= p and (_G.BringTarget == "All" or target.Name == _G.BringTarget) then
-                if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                    local tHum = target.Character:FindFirstChildOfClass("Humanoid")
-                    local tHRP = target.Character.HumanoidRootPart
+        for _, enemy in pairs(game.Players:GetPlayers()) do
+            -- VALIDACIONES BÁSICAS
+            if enemy ~= p and enemy.Character and enemy.Character:FindFirstChild("HumanoidRootPart") then
+                local eChar = enemy.Character
+                local eHum = eChar:FindFirstChildOfClass("Humanoid")
+                local eHRP = eChar.HumanoidRootPart
 
-                    if tHum and tHum.Health > 0 then
-                        -- 1. SALTAR SI ESTÁ SENTADO (Anti-kick)
-                        if tHum.Sit or tHum:GetState() == Enum.HumanoidStateType.Seated then
-                            continue 
-                        end
+                if eHum and eHum.Health > 0 then
+                    -- 1. FILTRO DE SENTADOS
+                    if eHum.Sit or eHum:GetState() == Enum.HumanoidStateType.Seated then
+                        continue 
+                    end
 
-                        -- 2. TRAER AL FRENTE
-                        tHRP.CFrame = targetPos
+                    -- 2. CHECK TEAM
+                    if _G.TeamCheck and enemy.Team == p.Team then
+                        continue 
+                    end
+                    
+                    -- 3. FILTRO EQUIPO CIVILES
+                    if enemy.Team and enemy.Team.Name == "Civiles" then
+                        continue
+                    end
 
-                        -- 3. AUTO-DAMAGE (Touch Interest)
-                        local tool = char:FindFirstChildOfClass("Tool")
-                        if tool and tool:FindFirstChild("Handle") then
-                            pcall(function()
-                                firetouchinterest(tHRP, tool.Handle, 0)
-                                firetouchinterest(tHRP, tool.Handle, 1)
-                            end)
-                        end
+                    -- [NUEVO] 4. FILTRO DE AURA (Evita los inmortales con ForceField)
+                    if _G.AntiAura and eChar:FindFirstChildOfClass("ForceField") then
+                        continue
+                    end
+
+                    -- 5. TP AL FRENTE
+                    eHRP.CFrame = targetPos
+
+                    -- 6. AUTO-KILL
+                    local tool = char:FindFirstChildOfClass("Tool")
+                    if tool and tool:FindFirstChild("Handle") then
+                        firetouchinterest(eHRP, tool.Handle, 0)
+                        firetouchinterest(eHRP, tool.Handle, 1)
                     end
                 end
             end
@@ -700,6 +717,22 @@ Combat:Toggle("Hard Freeze (Fake Lag)", function(v)
     _G.FakeLag_Enabled = v
 end)
 -------------------------------
+
+--// BOTÓN TP KILL CON FILTROS
+local TPMenu = Combat:Toggle("TP Kill", function(v)
+    _G.TPKill_All = v
+end)
+
+-- Sub-botón para Team Check
+TPMenu:AddSubToggle("Team Check", function(v)
+    _G.TeamCheck = v
+end)
+
+-- Sub-botón para el Aura (ForceField)
+TPMenu:AddSubToggle("Anti Aura", function(v)
+    _G.AntiAura = v
+end)
+
 ---------- Visual-------------------
 
 --// BOTÓN PARA ACTIVAR ESP Y CONECTAR AL MOTOR //--
