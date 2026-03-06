@@ -820,8 +820,7 @@ TabCombat:CreateInput({
 
 
 
-
--- [[ MOTOR OFICIAL Z-SLX V11.1 - RELEASE CANDIDATE (RAYFIELD OPTIMIZED) 🚁 ]]
+-- [[ MOTOR OFICIAL Z-SLX V11.2 - AUTO-WIPE PERFECTO (FIX UI MÓVIL/PC) 🚁 ]]
 _G.AutoWipe_Enabled = false
 _G.AutoWipe_TeamCheck = false
 _G.AutoWipe_Part = "Cabeza (Head)"
@@ -834,15 +833,17 @@ local ProcessedAutoEnemies = {}
 local SkyBase = nil
 local OriginalCFrame = nil 
 
-local SectionAuto = TabCombat:CreateSection("Tp Beta| Auto TpKill 🚁")
+local SectionAuto = TabCombat:CreateSection("Auto-Wipe Z | El Búnker 🚁")
 
 TabCombat:CreateToggle({
-   Name = "TpKill Auto (🔥)",
+   Name = "Activar Auto-Wipe (Masacre Total)",
    CurrentValue = false,
    Callback = function(Value) 
       _G.AutoWipe_Enabled = Value 
       local LP = game:GetService("Players").LocalPlayer
-      local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+      local char = LP.Character
+      local hum = char and char:FindFirstChild("Humanoid")
+      local root = char and char:FindFirstChild("HumanoidRootPart")
       
       if Value then
           if root then OriginalCFrame = root.CFrame end
@@ -852,7 +853,7 @@ TabCombat:CreateToggle({
               SkyBase.Size = Vector3.new(100, 2, 100)
               SkyBase.Position = Vector3.new(50000, 50000, 50000) 
               SkyBase.Anchored = true
-              SkyBase.Transparency = 0.8 
+              SkyBase.Transparency = 0.5 
               SkyBase.Material = Enum.Material.Glass
               SkyBase.Color = Color3.fromRGB(255, 0, 0) 
               SkyBase.Parent = workspace
@@ -864,6 +865,7 @@ TabCombat:CreateToggle({
               root.Anchored = true 
           end
       else
+          -- FIX MÓVIL AL DESACTIVAR
           if root then 
               root.Anchored = false 
               if OriginalCFrame then
@@ -872,6 +874,14 @@ TabCombat:CreateToggle({
                   root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
               end
           end
+          
+          if hum then
+              hum.PlatformStand = false
+              hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+              task.wait(0.1)
+              hum:JumpPower = hum.JumpPower 
+          end
+
           if SkyBase then SkyBase:Destroy() SkyBase = nil end
           table.clear(ProcessedAutoEnemies)
           _G.EnemiesInBunker = false
@@ -880,13 +890,13 @@ TabCombat:CreateToggle({
 })
 
 TabCombat:CreateToggle({
-   Name = "Team Check",
+   Name = "Team Check (Ignorar aliados)",
    CurrentValue = false,
    Callback = function(Value) _G.AutoWipe_TeamCheck = Value end,
 })
 
 TabCombat:CreateDropdown({
-   Name = "Parte ?",
+   Name = "Parte a Masacrar 🦴",
    Options = {"Cabeza (Head)", "Torso", "Cuerpo Entero (HRP)"},
    CurrentOption = {"Cabeza (Head)"},
    MultipleOptions = false,
@@ -899,13 +909,142 @@ TabCombat:CreateDropdown({
 })
 
 TabCombat:CreateSlider({
-   Name = "Auto Arma v1",
+   Name = "Auto-Equipar Arma (Slot Mochila)",
    Range = {1, 5},
    Increment = 1,
    CurrentValue = 2, 
    Flag = "SliderAutoEquip",
    Callback = function(Value) _G.AutoEquipSlot = Value end,
 })
+
+-- 🔥 CEREBRO 1: EXTRACCIÓN Y AUTO-EQUIP 🔥
+task.spawn(function()
+    local RunService = game:GetService("RunService")
+    local Players = game:GetService("Players")
+    local LP = Players.LocalPlayer
+    local Camera = workspace.CurrentCamera
+
+    RunService.Heartbeat:Connect(function()
+        if not _G.AutoWipe_Enabled then return end
+        local char = LP.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+        if not hum then return end
+        
+        -- AUTO-EQUIP
+        if _G.AutoEquipSlot > 0 then
+            local backpack = LP:FindFirstChild("Backpack")
+            if backpack then
+                local tools = {}
+                for _, v in pairs(backpack:GetChildren()) do
+                    if v:IsA("Tool") then table.insert(tools, v) end
+                end
+                if tools[_G.AutoEquipSlot] and hum.Parent then
+                    hum:EquipTool(tools[_G.AutoEquipSlot])
+                end
+            end
+        end
+
+        local targetPos = Camera.CFrame * CFrame.new(0, 0, -_G.AutoWipe_Dist)
+        local foundSomeone = false 
+
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LP and p.Character and p.Character:FindFirstChild("Humanoid") then
+                local eChar = p.Character
+                local eHum = eChar.Humanoid
+                local hrp = eChar:FindFirstChild("HumanoidRootPart")
+                
+                if eHum.Health > 0 and hrp then
+                    if _G.AutoWipe_TeamCheck and (p.Team == LP.Team or p.TeamColor == LP.TeamColor) then continue end
+                    if eChar:FindFirstChildOfClass("ForceField") then continue end
+
+                    foundSomeone = true
+                    local mode = _G.AutoWipe_Part
+
+                    if not ProcessedAutoEnemies[eChar] then
+                        pcall(function()
+                            local partToTP = (mode == "Cabeza (Head)" and eChar:FindFirstChild("Head")) or 
+                                            (mode == "Torso" and (eChar:FindFirstChild("Torso") or eChar:FindFirstChild("UpperTorso"))) or 
+                                            hrp
+                            
+                            if partToTP then
+                                if mode ~= "Cuerpo Entero (HRP)" then
+                                    local torso = eChar:FindFirstChild("Torso") or eChar:FindFirstChild("UpperTorso")
+                                    local neck = partToTP:FindFirstChild("Neck") or (torso and torso:FindFirstChild("Neck"))
+                                    if neck then neck:Destroy() end 
+                                    for _, part in pairs(eChar:GetChildren()) do
+                                        if part:IsA("BasePart") and part.Name ~= partToTP.Name then
+                                            part.Transparency = 1 part.CanCollide = false
+                                        elseif part:IsA("Accessory") then part:Destroy() end
+                                    end
+                                    partToTP.Color = Color3.fromRGB(255, 255, 255)
+                                    partToTP.Material = Enum.Material.Neon
+                                end
+                                eHum.PlatformStand = true 
+                                ProcessedAutoEnemies[eChar] = partToTP
+                            end
+                        end)
+                    end
+
+                    local targetPart = ProcessedAutoEnemies[eChar]
+                    if targetPart and targetPart.Parent then
+                        targetPart.CFrame = targetPos
+                        targetPart.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                    end
+                end
+            end
+        end
+        _G.EnemiesInBunker = foundSomeone
+    end)
+end)
+
+-- 🔥 CEREBRO 2: GATILLO DIRECTO (SIN CLICK FANTASMA PARA MÓVIL) 🔥
+task.spawn(function()
+    local VIM = game:GetService("VirtualInputManager")
+    local Players = game:GetService("Players")
+    local TimeSpentShooting = 0 
+    
+    while task.wait(0.01) do 
+        local LP = Players.LocalPlayer
+        local char = LP.Character
+        
+        -- Buscamos el arma que traes en la mano
+        local currentTool = nil
+        if char then
+            currentTool = char:FindFirstChildOfClass("Tool")
+        end
+
+        if _G.AutoWipe_Enabled and _G.EnemiesInBunker then
+            
+            -- FIX MÓVIL: Disparamos activando el arma directo, cero clicks de mouse
+            if currentTool then
+                currentTool:Activate()
+            end
+            
+            local step = task.wait(0.01) 
+            TimeSpentShooting = TimeSpentShooting + step
+            
+            if TimeSpentShooting >= 5 then
+                if currentTool then currentTool:Deactivate() end
+                
+                VIM:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+                task.wait(0.05)
+                VIM:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+                
+                local r = 0
+                while r < 2 and _G.AutoWipe_Enabled do
+                    r = r + task.wait(0.1)
+                end
+                TimeSpentShooting = 0 
+            end
+        else
+            if _G.AutoWipe_Enabled and currentTool then
+                currentTool:Deactivate()
+            end
+            task.wait(0.1) 
+        end
+    end
+end)
+
 
 
 
@@ -3169,150 +3308,4 @@ task.spawn(function()
             end
         end
     end)
-end)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- 🔥 CEREBRO 1: EXTRACCIÓN Y AUTO-EQUIP (OPTIMIZADO) 🔥
-task.spawn(function()
-    local RunService = game:GetService("RunService")
-    local Players = game:GetService("Players")
-    local LP = Players.LocalPlayer
-    local Camera = workspace.CurrentCamera
-
-    RunService.Heartbeat:Connect(function()
-        if not _G.AutoWipe_Enabled then return end
-        local char = LP.Character
-        local hum = char and char:FindFirstChild("Humanoid")
-        if not hum then return end
-        
-        -- AUTO-EQUIP
-        if _G.AutoEquipSlot > 0 then
-            local backpack = LP:FindFirstChild("Backpack")
-            if backpack then
-                local tools = {}
-                for _, v in pairs(backpack:GetChildren()) do
-                    if v:IsA("Tool") then table.insert(tools, v) end
-                end
-                if tools[_G.AutoEquipSlot] and hum.Parent then
-                    hum:EquipTool(tools[_G.AutoEquipSlot])
-                end
-            end
-        end
-
-        local targetPos = Camera.CFrame * CFrame.new(0, 0, -_G.AutoWipe_Dist)
-        local foundSomeone = false 
-
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LP and p.Character and p.Character:FindFirstChild("Humanoid") then
-                local eChar = p.Character
-                local eHum = eChar.Humanoid
-                local hrp = eChar:FindFirstChild("HumanoidRootPart")
-                
-                if eHum.Health > 0 and hrp then
-                    if _G.AutoWipe_TeamCheck and (p.Team == LP.Team or p.TeamColor == LP.TeamColor) then continue end
-                    if eChar:FindFirstChildOfClass("ForceField") then continue end
-
-                    foundSomeone = true
-                    local mode = _G.AutoWipe_Part
-
-                    if not ProcessedAutoEnemies[eChar] then
-                        pcall(function()
-                            local partToTP = (mode == "Cabeza (Head)" and eChar:FindFirstChild("Head")) or 
-                                            (mode == "Torso" and (eChar:FindFirstChild("Torso") or eChar:FindFirstChild("UpperTorso"))) or 
-                                            hrp
-                            
-                            if partToTP then
-                                if mode ~= "Cuerpo Entero (HRP)" then
-                                    local torso = eChar:FindFirstChild("Torso") or eChar:FindFirstChild("UpperTorso")
-                                    local neck = partToTP:FindFirstChild("Neck") or (torso and torso:FindFirstChild("Neck"))
-                                    if neck then neck:Destroy() end 
-                                    for _, part in pairs(eChar:GetChildren()) do
-                                        if part:IsA("BasePart") and part.Name ~= partToTP.Name then
-                                            part.Transparency = 1 part.CanCollide = false
-                                        elseif part:IsA("Accessory") then part:Destroy() end
-                                    end
-                                    partToTP.Color = Color3.fromRGB(255, 255, 255)
-                                    partToTP.Material = Enum.Material.Neon
-                                end
-                                eHum.PlatformStand = true 
-                                ProcessedAutoEnemies[eChar] = partToTP
-                            end
-                        end)
-                    end
-
-                    local targetPart = ProcessedAutoEnemies[eChar]
-                    if targetPart and targetPart.Parent then
-                        targetPart.CFrame = targetPos
-                        targetPart.AssemblyLinearVelocity = Vector3.new(0,0,0)
-                    end
-                end
-            end
-        end
-        _G.EnemiesInBunker = foundSomeone
-    end)
-end)
-
--- 🔥 CEREBRO 2: GATILLO TAS-TAS (ANTI-BUG RAYFIELD) 🔥
-task.spawn(function()
-    local VIM = game:GetService("VirtualInputManager")
-    local Camera = workspace.CurrentCamera
-    local TimeSpentShooting = 0 
-    
-    while task.wait(0.01) do -- Pequeño delay para que el HUB no se trabe
-        if _G.AutoWipe_Enabled and _G.EnemiesInBunker then
-            local x = Camera.ViewportSize.X / 2
-            local y = Camera.ViewportSize.Y / 2
-            
-            VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
-            
-            local step = task.wait(0.01) -- Respiro para Rayfield
-            TimeSpentShooting = TimeSpentShooting + step
-            
-            if TimeSpentShooting >= 3 then
-                VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
-                VIM:SendKeyEvent(true, Enum.KeyCode.R, false, game)
-                task.wait(0.03)
-                VIM:SendKeyEvent(false, Enum.KeyCode.R, false, game)
-                
-                local r = 0
-                while r < 2 and _G.AutoWipe_Enabled do
-                    r = r + task.wait(0.1)
-                end
-                TimeSpentShooting = 0 
-            end
-        else
-            if _G.AutoWipe_Enabled then
-                local x = Camera.ViewportSize.X / 2
-                local y = Camera.ViewportSize.Y / 2
-                VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
-            end
-            task.wait(0.1) -- Ahorro de CPU si no hay nadie
-        end
-    end
 end)
