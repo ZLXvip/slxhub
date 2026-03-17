@@ -1,0 +1,240 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+local Debris = game:GetService("Debris") 
+local Stats = game:GetService("Stats")
+local Workspace = game:GetService("Workspace")
+
+--// 2. VARIABLES DE ENTORNO //--
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local ParentTarget = LocalPlayer:WaitForChild("PlayerGui")
+
+local cloneref = (cloneref or clonereference or function(instance) return instance end)
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+
+
+local WindUI
+
+do
+    local ok, result = pcall(function()
+        return require("./src/Init")
+    end)
+    
+    if ok then
+        WindUI = result
+    else 
+        if cloneref(game:GetService("RunService")):IsStudio() then
+            WindUI = require(cloneref(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init")))
+        else
+            WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Beto321df/oiioidjasfdhsf/refs/heads/main/32%24"))()
+        end
+    end
+end
+
+-- */  Window  /* --
+local Window = WindUI:CreateWindow({
+    Title = "ZBeta v1.0  |  El Paso Texas.",
+    Author = "By  •  @znoreste",
+    Folder = "solar:power-bold",
+    Icon = "solar:power-bold",
+    Theme = "Dark",
+    --IconSize = 22*2,
+    NewElements = true,
+    --Size = UDim2.fromOffset(700,700),
+    
+    HideSearchBar = false,
+    
+    OpenButton = {
+        Title = "Z - EPT", -- can be changed
+        CornerRadius = UDim.new(1,0), -- fully rounded
+        StrokeThickness = 3, -- removing outline
+        Enabled = true, -- enable or disable openbutton
+        Draggable = true,
+        OnlyMobile = false,
+        Scale = 0.8,
+        
+        Color = ColorSequence.new( -- gradient
+            Color3.fromHex("#30FF6A"), 
+            Color3.fromHex("#e7ff2f")
+        )
+    },
+    Topbar = {
+        Height = 44,
+        ButtonsType = "Default", -- Default or Mac
+    },
+})
+
+do
+    Window:Tag({
+        Title = "v" .. WindUI.Version,
+        Icon = "github",
+        Color = Color3.fromHex("#1c1c1c"),
+        Border = true,
+    })
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- [[ MOTOR DE Anti Hit ]]
+_G.ModoGhostFE = false
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    local lp = game.Players.LocalPlayer
+    local char = lp.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+
+    if _G.ModoGhostFE and root and hum and hum.Health > 0 then
+        local oldPos = root.CFrame
+        -- Te manda al vacío para que nadie te pegue
+        root.CFrame = oldPos * CFrame.new(0, -10, 0)
+        
+        -- Fix de Cámara: Mantiene tu vista donde está la acción
+        hum.CameraOffset = Vector3.new(0, 10, 0)
+        
+        -- Regreso instantáneo: El secreto para que el arma dispare
+        game:GetService("RunService").RenderStepped:Wait()
+        root.CFrame = oldPos
+    elseif hum then
+        -- Limpiamos la cámara si se apaga el Ghost
+        hum.CameraOffset = Vector3.new(0, 0, 0)
+    end
+end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local CombatTab = Window:Tab({ 
+    Title = "r1", 
+    Icon = "solar:chat-round-unread-outline" 
+})
+
+local HitTab = Window:Tab({ 
+    Title = "r2", 
+    Icon = "solar:ghost-bold-duotone" 
+})
+
+local RenderTab = Window:Tab({ 
+    Title = "r3", 
+    Icon = "solar:t-shirt-bold-duotone" 
+})
+
+local FarmTab = Window:Tab({ 
+    Title = "r4", 
+    Icon = "solar:box-bold" 
+})
+
+Window:Divider()
+
+local HotkeysTab = Window:Tab({ 
+    Title = "Hotkeys", 
+    Icon = "solar:keyboard-bold" 
+})
+
+
+
+
+
+
+
+
+
+
+
+
+-- 1. Keybind para el Modo Invisible
+HotkeysTab:Keybind({
+    Title = "Tecla: Anti Hit v1",
+    Desc = "Activa/Desactiva (Anti-Hit)",
+    Value = "G",
+    Callback = function(key)
+        _G.ModoGhostFE = not _G.ModoGhostFE
+        WindUI:Notify({
+            Title = "Z-EPT Bypass",
+            Content = _G.ModoGhostFE and "Anti Hit: Activado" or "Anti Hit: Desactivado",
+            Time = 1
+        })
+    end
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Botones -- Combat --
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- */ Sección Combat: Ghost Mode /* --
+CombatTab:Toggle({
+    Title = "Anti-Hit v1",
+    Desc = "Te hace Invisible, para todos pero tu los puedes seguir matando. (Beta v1.2).",
+    Value = _G.ModoGhostFE, -- Estado inicial
+    Callback = function(state)
+        _G.ModoGhostFE = state
+        
+        -- Notificación visual estilo WindUI
+        WindUI:Notify({
+            Title = "Z-EPT Bypass",
+            Content = state and "Anti Hit: Activado" or "Anti Hit: Desactivado",
+            Time = 3
+        })
+    end
+})
