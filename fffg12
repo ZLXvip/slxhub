@@ -931,9 +931,9 @@ end)
 
 
 
--- [[ MOTOR SKELETON ESP: Z-SQUAD LITE ENGINE ]]
+-- [[ MOTOR SKELETON ESP: Z-SQUAD LITE ENGINE (FIXED) ]]
 _G.Skeleton_Enabled = false
-_G.Skeleton_Color = "Red" -- Red, Green, Blue, Rainbow
+_G.Skeleton_Color = "Red" 
 
 task.spawn(function()
     local Players = game:GetService("Players")
@@ -946,7 +946,7 @@ task.spawn(function()
     -- Función para crear una línea de hueso
     local function CreateLine()
         local line = Drawing.new("Line")
-        line.Thickness = 1.5 -- Grosor fijo para que no se "hinche"
+        line.Thickness = 1.5 
         line.Transparency = 1
         line.Visible = false
         return line
@@ -955,10 +955,23 @@ task.spawn(function()
     -- Estructura del esqueleto
     local function CreateSkeleton()
         return {
-            Spine = {CreateLine(), CreateLine()}, -- Cabeza-Torso, Torso-Cadera
-            Arms = {CreateLine(), CreateLine(), CreateLine(), CreateLine()}, -- Brazos
-            Legs = {CreateLine(), CreateLine(), CreateLine(), CreateLine()}  -- Piernas
+            Spine = {CreateLine(), CreateLine()}, 
+            Arms = {CreateLine(), CreateLine(), CreateLine(), CreateLine()}, 
+            Legs = {CreateLine(), CreateLine(), CreateLine(), CreateLine()}  
         }
+    end
+
+    -- FUNCIÓN DE LIMPIEZA TOTAL (Para cuando alguien se va)
+    local function RemoveSkeleton(player)
+        if Skeletons[player] then
+            for _, group in pairs(Skeletons[player]) do
+                for _, line in pairs(group) do
+                    line.Visible = false
+                    line:Remove() -- Borra la línea de la memoria
+                end
+            end
+            Skeletons[player] = nil
+        end
     end
 
     local function Connect(line, p1, p2, color)
@@ -975,9 +988,11 @@ task.spawn(function()
         end
     end
 
+    -- Evento: Si el jugador se sale, borramos sus huesos al instante
+    Players.PlayerRemoving:Connect(RemoveSkeleton)
+
     -- Loop Maestro
     RunService.RenderStepped:Connect(function()
-        -- Lógica de Color
         local rainbow = Color3.fromHSV(tick() % 5 / 5, 1, 1)
         local color = Color3.fromRGB(255, 0, 0)
         if _G.Skeleton_Color == "Green" then color = Color3.fromRGB(0, 255, 0)
@@ -987,20 +1002,18 @@ task.spawn(function()
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LP then
                 local char = player.Character
+                -- FIX: Checkamos de entrada si el wey existe y está vivo
                 if _G.Skeleton_Enabled and char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
                     if not Skeletons[player] then Skeletons[player] = CreateSkeleton() end
                     local skel = Skeletons[player]
 
-                    -- DETECCIÓN R15 / R6
                     if char:FindFirstChild("UpperTorso") then -- R15
                         Connect(skel.Spine[1], char.Head, char.UpperTorso, color)
                         Connect(skel.Spine[2], char.UpperTorso, char.LowerTorso, color)
-                        -- Brazos R15
                         Connect(skel.Arms[1], char.UpperTorso, char.LeftUpperArm, color)
                         Connect(skel.Arms[2], char.LeftUpperArm, char.LeftHand, color)
                         Connect(skel.Arms[3], char.UpperTorso, char.RightUpperArm, color)
                         Connect(skel.Arms[4], char.RightUpperArm, char.RightHand, color)
-                        -- Piernas R15
                         Connect(skel.Legs[1], char.LowerTorso, char.LeftUpperLeg, color)
                         Connect(skel.Legs[2], char.LeftUpperLeg, char.LeftFoot, color)
                         Connect(skel.Legs[3], char.LowerTorso, char.RightUpperLeg, color)
@@ -1011,23 +1024,27 @@ task.spawn(function()
                         Connect(skel.Arms[3], char.Torso, char["Right Arm"], color)
                         Connect(skel.Legs[1], char.Torso, char["Left Leg"], color)
                         Connect(skel.Legs[3], char.Torso, char["Right Leg"], color)
-                        -- Apagar líneas R15 sobrantes en R6
+                        
+                        -- Apagamos las que no usa el R6 para que no se queden estorbando
                         skel.Spine[2].Visible = false
                         skel.Arms[2].Visible = false
                         skel.Arms[4].Visible = false
                         skel.Legs[2].Visible = false
                         skel.Legs[4].Visible = false
                     end
-                elseif Skeletons[player] then
-                    -- Ocultar si está apagado o muerto
-                    for _, group in pairs(Skeletons[player]) do
-                        for _, line in pairs(group) do line.Visible = false end
+                else
+                    -- FIX: Si el jugador está muerto o el ESP apagado, forzamos visibilidad FALSE
+                    if Skeletons[player] then
+                        for _, group in pairs(Skeletons[player]) do
+                            for _, line in pairs(group) do line.Visible = false end
+                        end
                     end
                 end
             end
         end
     end)
 end)
+
 
 
 
